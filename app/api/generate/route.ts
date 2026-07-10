@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       size: '1024x1024',
     })
 
-    const imageBase64 = imageResponse.data[0].b64_json
+    const imageBase64 = imageResponse.data?.[0]?.b64_json
     const imageUrl = `data:image/png;base64,${imageBase64}`
 
     return NextResponse.json({ texte, imageUrl })
