@@ -27,7 +27,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const { theme, reseau, platform, accountId, scheduledAt } = await req.json()
+    const { theme, reseau, platform, scheduledAt } = await req.json()
+
+    // Récupérer le compte connecté du client pour cette plateforme
+    const { data: account } = await supabase
+      .from('social_accounts')
+      .select('zernio_account_id')
+      .eq('user_id', user.id)
+      .eq('platform', platform)
+      .single()
+
+    if (!account) {
+      return NextResponse.json(
+        {
+          error:
+            'Aucun compte ' +
+            platform +
+            " connecté. Va dans Mes réseaux pour connecter ton compte.",
+        },
+        { status: 400 }
+      )
+    }
 
     const { data, error } = await supabase
       .from('scheduled_posts')
@@ -36,7 +56,7 @@ export async function POST(req: Request) {
         theme,
         reseau,
         platform,
-        account_id: accountId,
+        account_id: account.zernio_account_id,
         scheduled_at: scheduledAt,
         status: 'pending',
       })

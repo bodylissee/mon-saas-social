@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const dimensionsParPlateforme: { [key: string]: { width: number; height: number } } = {
   instagram: { width: 1080, height: 1080 },
@@ -28,7 +30,54 @@ async function resizeImageToBase64(
 
 export async function POST(req: Request) {
   try {
-    const { content, platform, accountId, imageBase64 } = await req.json()
+    const { content, platform, imageBase64, accountId: bodyAccountId } = await req.json()
+
+    let accountId: string | null = null
+
+    // Mode 1 : appel du cron (avec le secret) -> on fait confiance à l'accountId fourni
+    const authHeader = req.headers.get('authorization')
+    const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+    if (isCron) {
+      accountId = bodyAccountId
+      if (!accountId) {
+        return NextResponse.json({ error: 'accountId manquant (cron)' }, { status: 400 })
+      }
+    } else {
+      // Mode 2 : client connecté -> on cherche SON compte dans social_accounts
+      const cookieStore = await cookies()
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { cookies: { getAll: () => cookieStore.getAll() } }
+      )
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Non connecté' }, { status: 401 })
+      }
+
+      const { data: account } = await supabase
+        .from('social_accounts')
+        .select('zernio_account_id')
+        .eq('user_id', user.id)
+        .eq('platform', platform)
+        .single()
+
+      if (!account) {
+        return NextResponse.json(
+          {
+            error:
+              'Aucun compte ' +
+              platform +
+              " connecté. Va dans Mes réseaux pour connecter ton compte.",
+          },
+          { status: 400 }
+        )
+      }
+
+      accountId = account.zernio_account_id
+    }
 
     let mediaItems = undefined
 

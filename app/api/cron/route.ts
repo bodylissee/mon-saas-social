@@ -50,7 +50,10 @@ export async function GET(req: Request) {
 
         const publishRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/publish`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+          },
           body: JSON.stringify({
             content: generated.texte,
             platform: post.platform,
