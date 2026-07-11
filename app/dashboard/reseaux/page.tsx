@@ -19,8 +19,15 @@ type Account = {
 export default function ReseauxPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    if (error) {
+      setErrorMessage(error);
+    }
+
     fetch("/api/zernio/sync")
       .then((r) => r.json())
       .then((d) => setAccounts(d.accounts ?? []))
@@ -34,6 +41,12 @@ export default function ReseauxPage() {
         <p className="text-gray-400 mb-8">
           Connecte tes comptes pour publier automatiquement.
         </p>
+
+        {errorMessage && (
+          <p className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 mb-8">
+            {errorMessage}
+          </p>
+        )}
 
         <h2 className="text-xl font-semibold mb-4">Comptes connectés</h2>
         {loading ? (

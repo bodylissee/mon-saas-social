@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
+import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+import { limitesDuPlan } from '@/lib/limits'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -8,6 +12,71 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 export async function POST(req: Request) {
   try {
     const { theme, reseau, langue } = await req.json()
+
+    // VERIFICATION DU PLAN (avant tout appel IA payant)
+    const authHeader = req.headers.get('authorization')
+    const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+    if (!isCron) {
+      const cookieStore = await cookies()
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { cookies: { getAll: () => cookieStore.getAll() } }
+      )
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Non connecté' }, { status: 401 })
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', user.id)
+        .single()
+
+      const limites = limitesDuPlan(profile?.plan)
+
+      if (limites.postsParMois === 0) {
+        return NextResponse.json(
+          { error: "Abonne-toi pour générer tes premiers posts." },
+          { status: 403 }
+        )
+      }
+
+      // Compter les posts du mois (publiés + programmés) pour bloquer aussi la génération au-delà du quota
+      const admin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const debutDuMois = new Date()
+      debutDuMois.setDate(1)
+      debutDuMois.setHours(0, 0, 0, 0)
+
+      const { count: publies } = await admin
+        .from('scheduled_posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'published')
+        .gte('published_at', debutDuMois.toISOString())
+
+      const { count: enAttente } = await admin
+        .from('scheduled_posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+
+      if ((publies ?? 0) + (enAttente ?? 0) >= limites.postsParMois) {
+        return NextResponse.json(
+          {
+            error: `Tu as atteint ta limite de ${limites.postsParMois} posts ce mois-ci. Passe au plan supérieur.`,
+          },
+          { status: 403 }
+        )
+      }
+    }
 
     const textResponse = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',

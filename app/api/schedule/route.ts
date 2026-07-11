@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { limitesDuPlan } from '@/lib/limits'
 
 export async function POST(req: Request) {
   try {
@@ -28,6 +29,42 @@ export async function POST(req: Request) {
     }
 
     const { theme, reseau, platform, scheduledAt } = await req.json()
+
+    // VERIFICATION DE LA LIMITE DE POSTS (publiés + déjà programmés ce mois)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single()
+
+    const limites = limitesDuPlan(profile?.plan)
+
+    const debutDuMois = new Date()
+    debutDuMois.setDate(1)
+    debutDuMois.setHours(0, 0, 0, 0)
+
+    const { count: publies } = await supabase
+      .from('scheduled_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'published')
+      .gte('published_at', debutDuMois.toISOString())
+
+    const { count: enAttente } = await supabase
+      .from('scheduled_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+
+    const total = (publies ?? 0) + (enAttente ?? 0)
+
+    if (total >= limites.postsParMois) {
+      const message =
+        limites.postsParMois === 0
+          ? "Abonne-toi pour programmer tes premiers posts."
+          : `Tu as atteint ta limite de ${limites.postsParMois} posts ce mois-ci (publiés + programmés). Passe au plan supérieur.`
+      return NextResponse.json({ error: message }, { status: 403 })
+    }
 
     // Récupérer le compte connecté du client pour cette plateforme
     const { data: account } = await supabase

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { limitesDuPlan } from "@/lib/limits";
 
 const ZERNIO = "https://zernio.com/api/v1";
 
@@ -23,12 +24,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   }
 
-  // 1. Récupérer ou créer le profil Zernio du client
+  // Récupérer le profil (plan + profil Zernio)
   const { data: profile } = await supabase
     .from("profiles")
-    .select("zernio_profile_id")
+    .select("zernio_profile_id, plan")
     .eq("id", user.id)
     .single();
+
+  // VERIFICATION DE LA LIMITE DE RESEAUX
+  const limites = limitesDuPlan(profile?.plan);
+
+  const { count } = await supabase
+    .from("social_accounts")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  if ((count ?? 0) >= limites.reseaux) {
+    const message =
+      limites.reseaux === 0
+        ? "Abonne-toi pour connecter tes réseaux sociaux."
+        : `Ton plan permet ${limites.reseaux} réseau(x) connecté(s) maximum. Passe au plan supérieur pour en ajouter.`;
+    return NextResponse.redirect(
+      `${req.nextUrl.origin}/dashboard/reseaux?error=${encodeURIComponent(message)}`
+    );
+  }
 
   let zernioProfileId = profile?.zernio_profile_id;
 
@@ -54,7 +73,7 @@ export async function GET(req: NextRequest) {
       .eq("id", user.id);
   }
 
-  // 2. Demander l'URL OAuth à Zernio
+  // Demander l'URL OAuth à Zernio
   const redirectUrl = `${req.nextUrl.origin}/dashboard/reseaux?connected=1`;
   const res = await fetch(
     `${ZERNIO}/connect/${platform}?profileId=${zernioProfileId}&redirect_url=${encodeURIComponent(redirectUrl)}`,

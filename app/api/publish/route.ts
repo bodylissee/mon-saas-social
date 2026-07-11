@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { limitesDuPlan } from '@/lib/limits'
 
 const dimensionsParPlateforme: { [key: string]: { width: number; height: number } } = {
   instagram: { width: 1080, height: 1080 },
@@ -26,6 +28,27 @@ async function resizeImageToBase64(
     .toBuffer()
 
   return `data:image/png;base64,${resized.toString('base64')}`
+}
+
+// Compte les posts publiés ce mois-ci par l'utilisateur
+async function postsPublieCeMois(userId: string): Promise<number> {
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const debutDuMois = new Date()
+  debutDuMois.setDate(1)
+  debutDuMois.setHours(0, 0, 0, 0)
+
+  const { count } = await admin
+    .from('scheduled_posts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'published')
+    .gte('published_at', debutDuMois.toISOString())
+
+  return count ?? 0
 }
 
 export async function POST(req: Request) {
@@ -55,6 +78,24 @@ export async function POST(req: Request) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         return NextResponse.json({ error: 'Non connecté' }, { status: 401 })
+      }
+
+      // VERIFICATION DE LA LIMITE DE POSTS
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', user.id)
+        .single()
+
+      const limites = limitesDuPlan(profile?.plan)
+      const dejaPublies = await postsPublieCeMois(user.id)
+
+      if (dejaPublies >= limites.postsParMois) {
+        const message =
+          limites.postsParMois === 0
+            ? "Abonne-toi pour publier tes premiers posts."
+            : `Tu as atteint ta limite de ${limites.postsParMois} posts ce mois-ci. Passe au plan supérieur pour publier plus.`
+        return NextResponse.json({ error: message }, { status: 403 })
       }
 
       const { data: account } = await supabase

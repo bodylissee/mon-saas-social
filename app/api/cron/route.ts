@@ -37,7 +37,10 @@ export async function GET(req: Request) {
       try {
         const generateRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+          },
           body: JSON.stringify({
             theme: post.theme,
             reseau: post.reseau,
