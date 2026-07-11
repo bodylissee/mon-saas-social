@@ -1,0 +1,82 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+const PLATFORMS = [
+  { id: "instagram", label: "Instagram" },
+  { id: "tiktok", label: "TikTok" },
+  { id: "facebook", label: "Facebook" },
+  { id: "linkedin", label: "LinkedIn" },
+  { id: "twitter", label: "X (Twitter)" },
+];
+
+type Account = {
+  id: string;
+  platform: string;
+  username: string | null;
+};
+
+export default function ReseauxPage() {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/zernio/sync")
+      .then((r) => r.json())
+      .then((d) => setAccounts(d.accounts ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#0F172A] text-white p-8">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">Mes réseaux sociaux</h1>
+        <p className="text-gray-400 mb-8">
+          Connecte tes comptes pour publier automatiquement.
+        </p>
+
+        <h2 className="text-xl font-semibold mb-4">Comptes connectés</h2>
+        {loading ? (
+          <p className="text-gray-400 mb-8">Chargement...</p>
+        ) : accounts.length === 0 ? (
+          <p className="text-gray-400 mb-8">
+            Aucun compte connecté pour le moment.
+          </p>
+        ) : (
+          <div className="space-y-3 mb-8">
+            {accounts.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+              >
+                <div>
+                  <p className="font-medium capitalize">{a.platform}</p>
+                  {a.username && (
+                    <p className="text-sm text-gray-400">@{a.username}</p>
+                  )}
+                </div>
+                <span className="text-green-400 text-sm">Connecté</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h2 className="text-xl font-semibold mb-4">Ajouter un réseau</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {PLATFORMS.map((p) => (
+            <a
+              key={p.id}
+              href={"/api/zernio/connect?platform=" + p.id}
+              className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium text-white transition hover:opacity-90"
+              style={{
+                background: "linear-gradient(135deg, #2563EB, #DB2777)",
+              }}
+            >
+              {p.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
