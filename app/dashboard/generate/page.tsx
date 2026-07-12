@@ -23,14 +23,22 @@ const formatParReseau: { [key: string]: { w: number; h: number; label: string } 
 }
 
 const categories = [
-  { label: '🛍️ E-commerce', themes: ['Nouveau produit', 'Promotion / Soldes', 'Avis client', 'Livraison rapide', 'Produit tendance', 'Offre limitée', 'Best-seller'] },
-  { label: '💪 Fitness & Sport', themes: ['Motivation du matin', 'Conseil nutrition', 'Exercice du jour', 'Transformation physique', 'Routine sportive', 'Objectif fitness'] },
-  { label: '🍔 Food & Restauration', themes: ['Recette rapide', 'Plat du jour', 'Conseil nutrition', 'Snack healthy', 'Menu spécial', 'Produit local'] },
-  { label: '👗 Mode & Beauté', themes: ['Nouvelle collection', 'Tenue du jour', 'Conseil style', 'Skincare routine', 'Tendance saison', 'Makeup du jour'] },
-  { label: '🏠 Maison & Déco', themes: ['Idée déco', 'DIY maison', 'Rangement astucieux', 'Ambiance cozy', 'Chambre tendance'] },
-  { label: '💼 Business', themes: ['Conseil business', 'Productivité', 'Mindset entrepreneur', 'Success story', 'Marketing tip'] },
-  { label: '✈️ Voyage & Lifestyle', themes: ['Destination coup de cœur', 'Conseil voyage', 'Budget voyage', 'Solo travel', 'Street food'] },
-  { label: '🎓 Education', themes: ['Astuce du jour', 'Fait insolite', 'Citation inspirante', 'Tutoriel rapide', 'Conseil pro'] },
+  { label: '🛍️ E-commerce', themes: ['Nouveau produit', 'Promotion / Soldes', 'Avis client', 'Livraison rapide', 'Produit tendance', 'Offre limitée', 'Best-seller', 'Coulisses de la boutique', 'Comparatif produit', 'Guide cadeaux'] },
+  { label: '💪 Fitness & Sport', themes: ['Motivation du matin', 'Conseil nutrition', 'Exercice du jour', 'Transformation physique', 'Routine sportive', 'Objectif fitness', 'Erreur à éviter', 'Récupération et repos', 'Défi de la semaine', 'Mythe fitness à casser'] },
+  { label: '🍔 Food & Restauration', themes: ['Recette rapide', 'Plat du jour', 'Conseil nutrition', 'Snack healthy', 'Menu spécial', 'Produit local', 'Coulisses cuisine', 'Accord mets et boissons', 'Astuce de chef', 'Événement au restaurant'] },
+  { label: '👗 Mode & Beauté', themes: ['Nouvelle collection', 'Tenue du jour', 'Conseil style', 'Skincare routine', 'Tendance saison', 'Makeup du jour', 'Avant / Après', 'Tuto beauté express', 'Capsule wardrobe', 'Erreur mode à éviter'] },
+  { label: '🏠 Maison & Déco', themes: ['Idée déco', 'DIY maison', 'Rangement astucieux', 'Ambiance cozy', 'Chambre tendance', 'Avant / Après déco', 'Petit budget grand effet', 'Plantes d\'intérieur', 'Organisation cuisine'] },
+  { label: '💼 Business & Entrepreneuriat', themes: ['Conseil business', 'Productivité', 'Mindset entrepreneur', 'Success story', 'Marketing tip', 'Erreur de débutant', 'Outil indispensable', 'Networking', 'Levée de fonds', 'Équilibre vie pro / perso'] },
+  { label: '✈️ Voyage & Lifestyle', themes: ['Destination coup de cœur', 'Conseil voyage', 'Budget voyage', 'Solo travel', 'Street food', 'Lieu secret', 'Check-list valise', 'Voyage en famille', 'Digital nomad'] },
+  { label: '🎓 Éducation & Formation', themes: ['Astuce du jour', 'Fait insolite', 'Citation inspirante', 'Tutoriel rapide', 'Conseil pro', 'Livre à lire', 'Méthode d\'apprentissage', 'Question quiz', 'Résumé express'] },
+  { label: '💻 Tech & Digital', themes: ['Astuce tech', 'Nouveauté IA', 'Application coup de cœur', 'Raccourci qui change la vie', 'Cybersécurité simple', 'Comparatif d\'outils', 'Tendance digitale', 'Vulgarisation tech'] },
+  { label: '🧘 Bien-être & Santé', themes: ['Routine bien-être', 'Gestion du stress', 'Sommeil réparateur', 'Méditation minute', 'Habitude saine', 'Self-care du dimanche', 'Équilibre digital detox', 'Conseil énergie'] },
+  { label: '🏢 Immobilier', themes: ['Nouveau bien à vendre', 'Conseil achat', 'Conseil vente', 'Quartier à la loupe', 'Home staging', 'Investissement locatif', 'Erreur d\'acheteur', 'Témoignage client', 'Estimation gratuite'] },
+  { label: '🎨 Artisanat & Créateurs', themes: ['Création du jour', 'Coulisses de l\'atelier', 'Processus de fabrication', 'Matières premières', 'Pièce unique', 'Commande personnalisée', 'Marché / Salon à venir', 'Histoire de la marque'] },
+  { label: '🐶 Animaux', themes: ['Conseil éducation', 'Santé animale', 'Astuce toilettage', 'Adoption du mois', 'Alimentation animale', 'Jeu et stimulation', 'Photo mignonne du jour', 'Erreur de maître à éviter'] },
+  { label: '👶 Famille & Parentalité', themes: ['Astuce parent', 'Activité enfant', 'Organisation familiale', 'Repas des petits', 'Sortie en famille', 'Moment complicité', 'Retour d\'expérience', 'Conseil sommeil bébé'] },
+  { label: '🚗 Auto & Moto', themes: ['Nouveau véhicule', 'Conseil entretien', 'Astuce économie carburant', 'Avant / Après detailing', 'Essai du jour', 'Erreur d\'entretien', 'Équipement indispensable', 'Promo atelier'] },
+  { label: '🎉 Événementiel', themes: ['Save the date', 'Coulisses de l\'événement', 'Idée déco événement', 'Témoignage de mariés', 'Prestation à la une', 'Conseil organisation', 'Compte à rebours', 'Merci aux participants'] },
 ]
 
 function ImageCropper({ src, reseau, onConfirm, onCancel }: {
@@ -187,7 +195,12 @@ export default function GeneratePage() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme, reseau, langue: 'français' }),
+        body: JSON.stringify({
+          theme,
+          reseau,
+          langue: 'français',
+          categorie: selectedCategory,
+        }),
       })
       const data = await res.json()
       if (data.error) setError(data.error)
@@ -222,7 +235,6 @@ export default function GeneratePage() {
         body: JSON.stringify({
           content: result.texte,
           platform: plateformeMap[reseau],
-          accountId: process.env.NEXT_PUBLIC_ZERNIO_ACCOUNT_ID,
           imageBase64: activeImage,
         }),
       })

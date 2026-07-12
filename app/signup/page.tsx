@@ -19,6 +19,8 @@ export default function SignupPage() {
     if (error) {
       setError(error.message)
     } else {
+      // Email de bienvenue (en arrière-plan, ne bloque pas la redirection)
+      fetch('/api/email-bienvenue', { method: 'POST' }).catch(() => {})
       router.push('/dashboard')
     }
     setLoading(false)

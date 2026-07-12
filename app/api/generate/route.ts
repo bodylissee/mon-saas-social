@@ -11,7 +11,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export async function POST(req: Request) {
   try {
-    const { theme, reseau, langue } = await req.json()
+    const { theme, reseau, langue, categorie } = await req.json()
 
     // VERIFICATION DU PLAN (avant tout appel IA payant)
     const authHeader = req.headers.get('authorization')
@@ -45,7 +45,6 @@ export async function POST(req: Request) {
         )
       }
 
-      // Compter les posts du mois (publiés + programmés) pour bloquer aussi la génération au-delà du quota
       const admin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -78,6 +77,10 @@ export async function POST(req: Request) {
       }
     }
 
+    const contexteCategorie = categorie
+      ? `\n        CONTEXTE MÉTIER : Ce post est pour un compte dans l'univers "${categorie.replace(/^[^\s]+\s/, '')}". Adapte le vocabulaire, les exemples et les hashtags à ce secteur précis.`
+      : ''
+
     const textResponse = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 500,
@@ -85,7 +88,7 @@ export async function POST(req: Request) {
         role: 'user',
         content: `Tu es un expert en marketing sur les réseaux sociaux avec 10 ans d'expérience.
         Crée un post ${reseau} viral sur le thème : "${theme}".
-        Langue : ${langue || 'français'}.
+        Langue : ${langue || 'français'}.${contexteCategorie}
         
         RÈGLES IMPORTANTES :
         - Commence par un hook accrocheur qui capte l'attention en 2 secondes
@@ -106,7 +109,7 @@ export async function POST(req: Request) {
 
     const imageResponse = await openai.images.generate({
       model: 'gpt-image-1',
-      prompt: `Photographie réaliste et naturelle pour un post ${reseau} sur le thème : ${theme}. Style photo authentique, lumière naturelle, couleurs douces et réalistes, comme une vraie photo prise par un photographe professionnel. Pas de texte dans l'image, pas de style illustration ou cartoon.`,
+      prompt: `Photographie réaliste et naturelle pour un post ${reseau} sur le thème : ${theme}${categorie ? ` (univers : ${categorie.replace(/^[^\s]+\s/, '')})` : ''}. Style photo authentique, lumière naturelle, couleurs douces et réalistes, comme une vraie photo prise par un photographe professionnel. Pas de texte dans l'image, pas de style illustration ou cartoon.`,
       n: 1,
       size: '1024x1024',
     })
