@@ -20,7 +20,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Non connecté' }, { status: 401 })
     }
 
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: 'PostIA <onboarding@resend.dev>',
       to: user.email,
       subject: 'Bienvenue sur PostIA ✨',
@@ -55,9 +55,15 @@ export async function POST() {
       `,
     })
 
+    if (error) {
+      console.error('❌ ERREUR RESEND:', error)
+      return NextResponse.json({ sent: false, error })
+    }
+
+    console.log('✅ Email envoyé, id:', data?.id)
     return NextResponse.json({ sent: true })
   } catch (error: any) {
-    // L'email ne doit jamais bloquer l'inscription
+    console.error('❌ ERREUR EMAIL:', error)
     return NextResponse.json({ sent: false, error: error.message })
   }
 }

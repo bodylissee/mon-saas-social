@@ -31,7 +31,7 @@ const NOMS_PLANS: { [key: string]: string } = {
 async function envoyerEmailBienvenuePayant(email: string, plan: string) {
   try {
     await resend.emails.send({
-      from: 'PostIA <onboarding@resend.dev>',
+      from: 'PostIA <bonjour@postia.cloud>',
       to: email,
       subject: `Bienvenue sur PostIA — ton plan ${NOMS_PLANS[plan] ?? plan} est actif 🎉`,
       html: `
