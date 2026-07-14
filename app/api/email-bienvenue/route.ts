@@ -21,7 +21,7 @@ export async function POST() {
     }
 
     const { data, error } = await resend.emails.send({
-      from: 'PostIA <onboarding@resend.dev>',
+      from: 'PostIA <bonjour@postia.cloud>',
       to: user.email,
       subject: 'Bienvenue sur PostIA ✨',
       html: `
