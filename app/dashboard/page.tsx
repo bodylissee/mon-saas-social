@@ -3,8 +3,20 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
+const NOMS_PLANS: { [key: string]: string } = {
+  free: 'Gratuit',
+  starter: 'Starter',
+  solo: 'Solo',
+  pro: 'Pro',
+  business: 'Business',
+  agency: 'Agency',
+}
+
 export default function DashboardPage() {
   const [email, setEmail] = useState('')
+  const [postsPublies, setPostsPublies] = useState<number | null>(null)
+  const [reseauxConnectes, setReseauxConnectes] = useState<number | null>(null)
+  const [plan, setPlan] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -13,9 +25,40 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
-      } else {
-        setEmail(user.email || '')
+        return
       }
+      setEmail(user.email || '')
+
+      // Posts publiés ce mois-ci
+      const debutDuMois = new Date()
+      debutDuMois.setDate(1)
+      debutDuMois.setHours(0, 0, 0, 0)
+
+      const { count: posts } = await supabase
+        .from('scheduled_posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'published')
+        .gte('published_at', debutDuMois.toISOString())
+
+      setPostsPublies(posts ?? 0)
+
+      // Réseaux connectés
+      const { count: reseaux } = await supabase
+        .from('social_accounts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      setReseauxConnectes(reseaux ?? 0)
+
+      // Plan actuel
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', user.id)
+        .single()
+
+      setPlan(profile?.plan ?? 'free')
     }
     getUser()
   }, [])
@@ -49,9 +92,21 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           {[
-            { label: 'Posts publiés', value: '0', color: '#2563EB' },
-            { label: 'Réseaux connectés', value: '0', color: '#EC4899' },
-            { label: 'Plan actuel', value: 'Starter', color: '#2563EB' },
+            {
+              label: 'Posts publiés ce mois',
+              value: postsPublies === null ? '…' : String(postsPublies),
+              color: '#2563EB',
+            },
+            {
+              label: 'Réseaux connectés',
+              value: reseauxConnectes === null ? '…' : String(reseauxConnectes),
+              color: '#EC4899',
+            },
+            {
+              label: 'Plan actuel',
+              value: plan === null ? '…' : (NOMS_PLANS[plan] ?? plan),
+              color: '#2563EB',
+            },
           ].map((stat) => (
             <div key={stat.label} className="rounded-2xl p-6" style={{ background: '#1E293B', border: '1px solid #334155' }}>
               <div className="text-3xl font-bold mb-1" style={{ color: stat.color }}>{stat.value}</div>
@@ -94,8 +149,9 @@ export default function DashboardPage() {
           </div>
 
           <div
-            className="rounded-2xl p-8 text-center"
+            className="rounded-2xl p-8 text-center cursor-pointer hover:opacity-90"
             style={{ background: '#1E293B', border: '1px solid #334155' }}
+            onClick={() => router.push('/dashboard/reseaux')}
           >
             <div className="text-4xl mb-4">🔗</div>
             <h2 className="text-xl font-bold text-white mb-2">Connecter un réseau</h2>
