@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const PLATFORMS = [
   { id: "instagram", label: "Instagram" },
@@ -20,6 +21,7 @@ export default function ReseauxPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -35,9 +37,26 @@ export default function ReseauxPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-white p-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Mes réseaux sociaux</h1>
+    <main className="min-h-screen" style={{ background: "#0F172A" }}>
+      <header
+        className="px-6 py-4 flex justify-between items-center"
+        style={{ borderBottom: "1px solid #1E293B" }}
+      >
+        <div className="text-xl font-bold">
+          <span style={{ color: "#2563EB" }}>Post</span>
+          <span style={{ color: "#EC4899" }}>IA</span>
+        </div>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="text-sm"
+          style={{ color: "#94A3B8" }}
+        >
+          ← Retour au dashboard
+        </button>
+      </header>
+
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <h1 className="text-3xl font-bold text-white mb-2">Mes réseaux sociaux</h1>
         <p className="text-gray-400 mb-8">
           Connecte tes comptes pour publier automatiquement.
         </p>
@@ -48,7 +67,7 @@ export default function ReseauxPage() {
           </p>
         )}
 
-        <h2 className="text-xl font-semibold mb-4">Comptes connectés</h2>
+        <h2 className="text-xl font-semibold text-white mb-4">Comptes connectés</h2>
         {loading ? (
           <p className="text-gray-400 mb-8">Chargement...</p>
         ) : accounts.length === 0 ? (
@@ -63,7 +82,7 @@ export default function ReseauxPage() {
                 className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3"
               >
                 <div>
-                  <p className="font-medium capitalize">{a.platform}</p>
+                  <p className="font-medium capitalize text-white">{a.platform}</p>
                   {a.username && (
                     <p className="text-sm text-gray-400">@{a.username}</p>
                   )}
@@ -74,10 +93,10 @@ export default function ReseauxPage() {
           </div>
         )}
 
-        <h2 className="text-xl font-semibold mb-4">Ajouter un réseau</h2>
+        <h2 className="text-xl font-semibold text-white mb-4">Ajouter un réseau</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {PLATFORMS.map((p) => (
-            <a
+            
               key={p.id}
               href={"/api/zernio/connect?platform=" + p.id}
               className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium text-white transition hover:opacity-90"
@@ -90,6 +109,6 @@ export default function ReseauxPage() {
           ))}
         </div>
       </div>
-    </div>
+    </main>
   );
 }
