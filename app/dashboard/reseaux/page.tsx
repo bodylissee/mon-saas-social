@@ -96,7 +96,7 @@ export default function ReseauxPage() {
         <h2 className="text-xl font-semibold text-white mb-4">Ajouter un réseau</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {PLATFORMS.map((p) => (
-            
+            <a
               key={p.id}
               href={"/api/zernio/connect?platform=" + p.id}
               className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium text-white transition hover:opacity-90"
