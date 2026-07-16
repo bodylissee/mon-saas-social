@@ -13,7 +13,7 @@ export default function CGVPage() {
             <p>
               Les présentes conditions générales de vente (CGV) régissent l'utilisation du
               service PostIA, plateforme de génération et de publication automatisée de contenus
-              sur les réseaux sociaux, éditée par [NOM / DÉNOMINATION], micro-entreprise
+              sur les réseaux sociaux, éditée par BELAHCEL SAMIA, micro-entreprise
               immatriculée sous le SIRET 332 612 720 00026. Toute souscription à un abonnement
               PostIA implique l'acceptation pleine et entière des présentes CGV.
             </p>
