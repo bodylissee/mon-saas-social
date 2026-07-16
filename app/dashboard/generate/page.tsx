@@ -13,15 +13,6 @@ const plateformeMap: { [key: string]: string } = {
   'X (Twitter)': 'twitter',
 }
 
-const formatParReseau: { [key: string]: { w: number; h: number; label: string } } = {
-  'Instagram': { w: 1080, h: 1080, label: '1:1 Instagram' },
-  'TikTok': { w: 1080, h: 1920, label: '9:16 TikTok' },
-  'Facebook': { w: 1200, h: 630, label: '16:9 Facebook' },
-  'YouTube': { w: 1280, h: 720, label: '16:9 YouTube' },
-  'LinkedIn': { w: 1200, h: 627, label: '16:9 LinkedIn' },
-  'X (Twitter)': { w: 1200, h: 675, label: '16:9 Twitter' },
-}
-
 const categories = [
   { label: '🛍️ E-commerce', themes: ['Nouveau produit', 'Promotion / Soldes', 'Avis client', 'Livraison rapide', 'Produit tendance', 'Offre limitée', 'Best-seller', 'Coulisses de la boutique', 'Comparatif produit', 'Guide cadeaux'] },
   { label: '💪 Fitness & Sport', themes: ['Motivation du matin', 'Conseil nutrition', 'Exercice du jour', 'Transformation physique', 'Routine sportive', 'Objectif fitness', 'Erreur à éviter', 'Récupération et repos', 'Défi de la semaine', 'Mythe fitness à casser'] },
@@ -41,154 +32,50 @@ const categories = [
   { label: '🎉 Événementiel', themes: ['Save the date', 'Coulisses de l\'événement', 'Idée déco événement', 'Témoignage de mariés', 'Prestation à la une', 'Conseil organisation', 'Compte à rebours', 'Merci aux participants'] },
 ]
 
-function ImageCropper({ src, reseau, onConfirm, onCancel }: {
-  src: string
-  reseau: string
-  onConfirm: (croppedBase64: string) => void
-  onCancel: () => void
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const imgRef = useRef<HTMLImageElement | null>(null)
-  const [zoom, setZoom] = useState(1)
-  const [offset, setOffset] = useState({ x: 0, y: 0 })
-  const [dragging, setDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const PREVIEW_SIZE = 400
-
-  const format = formatParReseau[reseau] || { w: 1080, h: 1080, label: '1:1' }
-  const ratio = format.w / format.h
-  const previewW = ratio >= 1 ? PREVIEW_SIZE : PREVIEW_SIZE * ratio
-  const previewH = ratio >= 1 ? PREVIEW_SIZE / ratio : PREVIEW_SIZE
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current
-    const img = imgRef.current
-    if (!canvas || !img) return
-    const ctx = canvas.getContext('2d')!
-    ctx.clearRect(0, 0, previewW, previewH)
-    const scale = zoom * Math.max(previewW / img.width, previewH / img.height)
-    const w = img.width * scale
-    const h = img.height * scale
-    ctx.drawImage(img, offset.x + (previewW - w) / 2, offset.y + (previewH - h) / 2, w, h)
-  }, [zoom, offset, previewW, previewH])
-
-  useEffect(() => {
-    const img = new Image()
-    img.onload = () => { imgRef.current = img; draw() }
-    img.src = src
-  }, [src])
-
-  useEffect(() => { draw() }, [draw])
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setDragging(true)
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragging) return
-    setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
-  }
-
-  const handleMouseUp = () => setDragging(false)
-
-  const handleConfirm = () => {
-    const canvas = document.createElement('canvas')
-    canvas.width = format.w
-    canvas.height = format.h
-    const ctx = canvas.getContext('2d')!
-    const img = imgRef.current!
-    const scalePreview = zoom * Math.max(previewW / img.width, previewH / img.height)
-    const scaleOutput = format.w / previewW
-    const w = img.width * scalePreview * scaleOutput
-    const h = img.height * scalePreview * scaleOutput
-    const x = (offset.x + (previewW - img.width * scalePreview) / 2) * scaleOutput
-    const y = (offset.y + (previewH - img.height * scalePreview) / 2) * scaleOutput
-    ctx.drawImage(img, x, y, w, h)
-    onConfirm(canvas.toDataURL('image/png'))
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.85)' }}>
-      <div className="rounded-2xl p-6 max-w-lg w-full mx-4" style={{ background: '#1E293B', border: '1px solid #334155' }}>
-        <h3 className="text-white font-bold text-lg mb-2">Recadrer l'image</h3>
-        <p className="text-sm mb-4" style={{ color: '#64748B' }}>
-          Format : <span style={{ color: '#EC4899' }}>{format.label}</span> — Glisse et zoome pour ajuster
-        </p>
-
-        <div
-          className="mx-auto rounded-xl overflow-hidden cursor-grab active:cursor-grabbing"
-          style={{ width: previewW, height: previewH, border: '2px solid #2563EB' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <canvas ref={canvasRef} width={previewW} height={previewH} />
-        </div>
-
-        <div className="mt-4 mb-6">
-          <label className="block text-sm mb-2" style={{ color: '#94A3B8' }}>
-            Zoom : {Math.round(zoom * 100)}%
-          </label>
-          <input
-            type="range"
-            min="0.5"
-            max="3"
-            step="0.01"
-            value={zoom}
-            onChange={(e) => setZoom(parseFloat(e.target.value))}
-            className="w-full"
-          />
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-xl text-sm font-medium"
-            style={{ background: '#0F172A', color: '#94A3B8', border: '1px solid #334155' }}
-          >
-            Annuler
-          </button>
-          <button
-            onClick={handleConfirm}
-            className="flex-1 py-3 rounded-xl text-sm font-medium text-white"
-            style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)' }}
-          >
-            ✅ Confirmer le recadrage
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function GeneratePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
   const [customTheme, setCustomTheme] = useState('')
   const [reseau, setReseau] = useState('Instagram')
+  const [nbSlides, setNbSlides] = useState(1)
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [published, setPublished] = useState(false)
-  const [result, setResult] = useState<{ texte: string; imageUrl: string } | null>(null)
-  const [customImage, setCustomImage] = useState<string | null>(null)
-  const [rawImage, setRawImage] = useState<string | null>(null)
-  const [showCropper, setShowCropper] = useState(false)
+  const [result, setResult] = useState<{ texte: string; imageUrls: string[] } | null>(null)
+  const [currentSlide, setCurrentSlide] = useState(0)
   const [error, setError] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [carrouselsAutorises, setCarrouselsAutorises] = useState(false)
+  const [maxSlides, setMaxSlides] = useState(1)
   const router = useRouter()
 
   const theme = selectedTheme || customTheme
-  const activeImage = customImage || result?.imageUrl
+
+  // Récupérer le plan pour savoir si les carrousels sont autorisés
+  useEffect(() => {
+    fetch('/api/mon-plan')
+      .then((r) => r.json())
+      .then((d) => {
+        const limits: { [k: string]: { carrousels: boolean; maxSlides: number } } = {
+          free: { carrousels: false, maxSlides: 1 },
+          starter: { carrousels: false, maxSlides: 1 },
+          solo: { carrousels: false, maxSlides: 1 },
+          pro: { carrousels: true, maxSlides: 5 },
+          business: { carrousels: true, maxSlides: 5 },
+          agency: { carrousels: true, maxSlides: 5 },
+        }
+        const conf = limits[d.plan ?? 'free'] ?? limits.free
+        setCarrouselsAutorises(conf.carrousels)
+        setMaxSlides(conf.maxSlides)
+      })
+      .catch(() => {})
+  }, [])
 
   const handleGenerate = async () => {
     if (!theme) return
     setLoading(true)
     setError('')
     setResult(null)
-    setCustomImage(null)
-    setRawImage(null)
+    setCurrentSlide(0)
     setPublished(false)
 
     try {
@@ -200,31 +87,20 @@ export default function GeneratePage() {
           reseau,
           langue: 'français',
           categorie: selectedCategory,
+          nbSlides,
         }),
       })
       const data = await res.json()
       if (data.error) setError(data.error)
-      else setResult(data)
+      else setResult({ texte: data.texte, imageUrls: data.imageUrls || [data.imageUrl] })
     } catch (e) {
       setError('Une erreur est survenue')
     }
     setLoading(false)
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const base64 = reader.result as string
-      setRawImage(base64)
-      setShowCropper(true)
-    }
-    reader.readAsDataURL(file)
-  }
-
   const handlePublish = async () => {
-    if (!result || !activeImage) return
+    if (!result || result.imageUrls.length === 0) return
     setPublishing(true)
     setError('')
 
@@ -235,7 +111,7 @@ export default function GeneratePage() {
         body: JSON.stringify({
           content: result.texte,
           platform: plateformeMap[reseau],
-          imageBase64: activeImage,
+          imagesBase64: result.imageUrls,
         }),
       })
       const data = await res.json()
@@ -247,18 +123,10 @@ export default function GeneratePage() {
     setPublishing(false)
   }
 
+  const estCarrousel = result && result.imageUrls.length > 1
+
   return (
     <main className="min-h-screen" style={{ background: '#0F172A' }}>
-
-      {showCropper && rawImage && (
-        <ImageCropper
-          src={rawImage}
-          reseau={reseau}
-          onConfirm={(cropped) => { setCustomImage(cropped); setShowCropper(false) }}
-          onCancel={() => setShowCropper(false)}
-        />
-      )}
-
       <header className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid #1E293B' }}>
         <div className="text-xl font-bold">
           <span style={{ color: '#2563EB' }}>Post</span><span style={{ color: '#EC4899' }}>IA</span>
@@ -328,7 +196,7 @@ export default function GeneratePage() {
             />
           </div>
 
-          <div className="mb-8">
+          <div className="mb-6">
             <label className="block text-sm mb-3" style={{ color: '#94A3B8' }}>
               {selectedCategory ? '4. Choisis le réseau social' : '3. Choisis le réseau social'}
             </label>
@@ -347,6 +215,37 @@ export default function GeneratePage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Choix du nombre de slides (carrousel) */}
+          <div className="mb-8">
+            <label className="block text-sm mb-3" style={{ color: '#94A3B8' }}>
+              {selectedCategory ? '5. Type de post' : '4. Type de post'}
+            </label>
+            {carrouselsAutorises ? (
+              <div className="flex gap-2 flex-wrap items-center">
+                {Array.from({ length: maxSlides }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setNbSlides(n)}
+                    className="px-4 py-2 rounded-xl text-sm font-medium"
+                    style={nbSlides === n
+                      ? { background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }
+                      : { background: '#0F172A', color: '#64748B', border: '1px solid #334155' }
+                    }
+                  >
+                    {n === 1 ? '1 image' : `${n} slides`}
+                  </button>
+                ))}
+                <span className="text-xs ml-2" style={{ color: '#64748B' }}>
+                  Un carrousel compte pour {nbSlides} post{nbSlides > 1 ? 's' : ''} dans ton quota
+                </span>
+              </div>
+            ) : (
+              <div className="text-sm p-3 rounded-xl" style={{ background: '#0F172A', color: '#64748B', border: '1px solid #334155' }}>
+                📸 Post à 1 image. <span style={{ color: '#EC4899' }}>Les carrousels sont disponibles à partir du plan Pro.</span>
+              </div>
+            )}
           </div>
 
           <button
@@ -373,56 +272,68 @@ export default function GeneratePage() {
 
         {result && (
           <div className="rounded-2xl p-8" style={{ background: '#1E293B', border: '1px solid #334155' }}>
-            <h2 className="text-xl font-bold text-white mb-6">✅ Ton post est prêt !</h2>
+            <h2 className="text-xl font-bold text-white mb-6">
+              ✅ Ton {estCarrousel ? 'carrousel' : 'post'} est prêt !
+            </h2>
 
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <label className="text-sm" style={{ color: '#94A3B8' }}>
-                  {customImage ? '🖼️ Ton image personnalisée' : '🤖 Image générée par IA'}
+                  🤖 {estCarrousel ? `Carrousel de ${result.imageUrls.length} images` : 'Image générée par IA'}
                 </label>
-                <div className="flex gap-2">
-                  {customImage && (
-                    <>
-                      <button
-                        onClick={() => setShowCropper(true)}
-                        className="text-xs px-3 py-1 rounded-lg"
-                        style={{ background: '#0F172A', color: '#EC4899', border: '1px solid #EC4899' }}
-                      >
-                        ✂️ Recadrer
-                      </button>
-                      <button
-                        onClick={() => { setCustomImage(null); setRawImage(null) }}
-                        className="text-xs px-3 py-1 rounded-lg"
-                        style={{ background: '#0F172A', color: '#94A3B8', border: '1px solid #334155' }}
-                      >
-                        🤖 Image IA
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-xs px-3 py-1 rounded-lg font-medium"
-                    style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }}
-                  >
-                    📁 Ma photo
-                  </button>
-                </div>
+                {estCarrousel && (
+                  <span className="text-xs" style={{ color: '#64748B' }}>
+                    Image {currentSlide + 1} / {result.imageUrls.length}
+                  </span>
+                )}
               </div>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
+              {/* Aperçu image (avec navigation si carrousel) */}
+              <div className="relative">
+                <img
+                  src={result.imageUrls[currentSlide]}
+                  alt={`Slide ${currentSlide + 1}`}
+                  className="w-full rounded-xl"
+                  style={{ maxHeight: '400px', objectFit: 'cover' }}
+                />
+                {estCarrousel && (
+                  <>
+                    <button
+                      onClick={() => setCurrentSlide((s) => (s > 0 ? s - 1 : result.imageUrls.length - 1))}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-white"
+                      style={{ background: 'rgba(15,23,42,0.7)' }}
+                    >
+                      ‹
+                    </button>
+                    <button
+                      onClick={() => setCurrentSlide((s) => (s < result.imageUrls.length - 1 ? s + 1 : 0))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-white"
+                      style={{ background: 'rgba(15,23,42,0.7)' }}
+                    >
+                      ›
+                    </button>
+                  </>
+                )}
+              </div>
 
-              <img
-                src={activeImage}
-                alt="Image du post"
-                className="w-full rounded-xl"
-                style={{ maxHeight: '400px', objectFit: 'cover' }}
-              />
+              {/* Petites vignettes */}
+              {estCarrousel && (
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {result.imageUrls.map((img, i) => (
+                    <img
+                      key={i}
+                      src={img}
+                      alt={`Vignette ${i + 1}`}
+                      onClick={() => setCurrentSlide(i)}
+                      className="w-14 h-14 rounded-lg cursor-pointer"
+                      style={{
+                        objectFit: 'cover',
+                        border: currentSlide === i ? '2px solid #EC4899' : '2px solid transparent',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="mb-6">

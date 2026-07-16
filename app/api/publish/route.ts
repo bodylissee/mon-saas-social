@@ -30,30 +30,38 @@ async function resizeImageToBase64(
   return `data:image/png;base64,${resized.toString('base64')}`
 }
 
-// Compte les posts publiés ce mois-ci par l'utilisateur
-async function postsPublieCeMois(userId: string): Promise<number> {
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+// Upload une image base64 vers Zernio, renvoie l'URL publique
+async function uploadImageToZernio(imageBase64: string): Promise<string> {
+  const presignRes = await fetch('https://zernio.com/api/v1/media/presign', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.ZERNIO_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      filename: 'post-image.png',
+      contentType: 'image/png',
+    }),
+  })
 
-  const debutDuMois = new Date()
-  debutDuMois.setDate(1)
-  debutDuMois.setHours(0, 0, 0, 0)
+  const presignData = await presignRes.json()
+  const { uploadUrl, publicUrl } = presignData
 
-  const { count } = await admin
-    .from('scheduled_posts')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('status', 'published')
-    .gte('published_at', debutDuMois.toISOString())
+  const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
+  const buffer = Buffer.from(base64Data, 'base64')
 
-  return count ?? 0
+  await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/png' },
+    body: buffer,
+  })
+
+  return publicUrl
 }
 
 export async function POST(req: Request) {
   try {
-    const { content, platform, imageBase64, accountId: bodyAccountId } = await req.json()
+    const { content, platform, imageBase64, imagesBase64, accountId: bodyAccountId } = await req.json()
 
     let accountId: string | null = null
 
@@ -88,14 +96,33 @@ export async function POST(req: Request) {
         .single()
 
       const limites = limitesDuPlan(profile?.plan)
-      const dejaPublies = await postsPublieCeMois(user.id)
 
-      if (dejaPublies >= limites.postsParMois) {
-        const message =
-          limites.postsParMois === 0
-            ? "Abonne-toi pour publier tes premiers posts."
-            : `Tu as atteint ta limite de ${limites.postsParMois} posts ce mois-ci. Passe au plan supérieur pour publier plus.`
-        return NextResponse.json({ error: message }, { status: 403 })
+      const debutDuMois = new Date()
+      debutDuMois.setDate(1)
+      debutDuMois.setHours(0, 0, 0, 0)
+
+      const admin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const { count } = await admin
+        .from('scheduled_posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'published')
+        .gte('published_at', debutDuMois.toISOString())
+
+      if ((count ?? 0) >= limites.postsParMois) {
+        return NextResponse.json(
+          {
+            error:
+              limites.postsParMois === 0
+                ? "Abonne-toi pour publier tes premiers posts."
+                : `Tu as atteint ta limite de ${limites.postsParMois} posts ce mois-ci. Passe au plan supérieur pour publier plus.`,
+          },
+          { status: 403 }
+        )
       }
 
       const { data: account } = await supabase
@@ -120,37 +147,24 @@ export async function POST(req: Request) {
       accountId = account.zernio_account_id
     }
 
-    let mediaItems = undefined
+    // Rassembler les images : soit un tableau (carrousel), soit une seule
+    const images: string[] =
+      Array.isArray(imagesBase64) && imagesBase64.length > 0
+        ? imagesBase64
+        : imageBase64
+        ? [imageBase64]
+        : []
 
-    if (imageBase64) {
-      const dims = dimensionsParPlateforme[platform] || { width: 1080, height: 1080 }
-      const resizedImage = await resizeImageToBase64(imageBase64, dims.width, dims.height)
+    const dims = dimensionsParPlateforme[platform] || { width: 1080, height: 1080 }
+    let mediaItems: any[] | undefined = undefined
 
-      const presignRes = await fetch('https://zernio.com/api/v1/media/presign', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.ZERNIO_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: 'post-image.png',
-          contentType: 'image/png',
-        }),
-      })
-
-      const presignData = await presignRes.json()
-      const { uploadUrl, publicUrl } = presignData
-
-      const base64Data = resizedImage.replace(/^data:image\/\w+;base64,/, '')
-      const buffer = Buffer.from(base64Data, 'base64')
-
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'image/png' },
-        body: buffer,
-      })
-
-      mediaItems = [{ type: 'image', url: publicUrl }]
+    if (images.length > 0) {
+      mediaItems = []
+      for (const img of images) {
+        const resized = await resizeImageToBase64(img, dims.width, dims.height)
+        const publicUrl = await uploadImageToZernio(resized)
+        mediaItems.push({ type: 'image', url: publicUrl })
+      }
     }
 
     const body: any = {

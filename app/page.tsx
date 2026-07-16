@@ -7,32 +7,32 @@ export default function Home() {
   const plans = [
     {
       name: "Starter", price: "9", desc: "Parfait pour débuter",
-      reseaux: "1 réseau social", posts: "1 post par jour",
+      reseaux: "1 réseau social", posts: "15 posts par mois",
       extras: ["Texte généré par IA", "Image générée par IA"],
       popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
     },
     {
       name: "Solo", price: "19", desc: "Pour les créateurs actifs",
-      reseaux: "2 réseaux sociaux", posts: "2 posts par jour",
-      extras: ["Texte généré par IA", "Image générée par IA", "Vidéo générée par IA"],
+      reseaux: "2 réseaux sociaux", posts: "60 posts par mois",
+      extras: ["Texte généré par IA", "Image générée par IA"],
       popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_SOLO_PRICE_ID,
     },
     {
       name: "Pro", price: "29", desc: "Le plus populaire",
-      reseaux: "3 réseaux sociaux", posts: "3 posts par jour",
-      extras: ["Texte généré par IA", "Image générée par IA", "Vidéo générée par IA", "Statistiques"],
+      reseaux: "3 réseaux sociaux", posts: "150 posts par mois",
+      extras: ["Texte généré par IA", "Image générée par IA", "Statistiques"],
       popular: true, priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
     },
     {
       name: "Business", price: "59", desc: "Pour les PME et agences",
-      reseaux: "6 réseaux sociaux", posts: "4 posts par jour",
-      extras: ["Texte généré par IA", "Image générée par IA", "Vidéo générée par IA", "Statistiques", "Support prioritaire"],
+      reseaux: "5 réseaux sociaux", posts: "400 posts par mois",
+      extras: ["Texte généré par IA", "Image générée par IA", "Statistiques", "Support prioritaire"],
       popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID,
     },
     {
       name: "Agency", price: "99", desc: "Multi-clients à grande échelle",
-      reseaux: "15 réseaux sociaux", posts: "5 posts par jour",
-      extras: ["Texte généré par IA", "Image générée par IA", "Vidéo générée par IA", "Statistiques", "Support prioritaire", "Tableau de bord agence"],
+      reseaux: "10 réseaux sociaux", posts: "Posts illimités",
+      extras: ["Texte généré par IA", "Image générée par IA", "Statistiques", "Support prioritaire", "Tableau de bord agence"],
       popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_AGENCY_PRICE_ID,
     },
   ]
@@ -144,8 +144,8 @@ export default function Home() {
         </div>
         <div className="flex gap-4 items-center">
           <a href="/login" className="text-sm" style={{ color: '#94A3B8' }}>Connexion</a>
-          <a href="/signup" className="text-sm font-medium px-4 py-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }}>
-            Commencer gratuitement
+          <a href="#pricing" className="text-sm font-medium px-4 py-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }}>
+            Voir les offres
           </a>
         </div>
       </header>
@@ -165,11 +165,11 @@ export default function Home() {
           L'IA crée et publie tes posts sur TikTok, Instagram, Facebook et plus — sans que tu lèves le petit doigt.
         </p>
         <div className="flex gap-4 justify-center flex-wrap">
-          <a href="/signup" className="px-8 py-4 rounded-xl text-lg font-medium" style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }}>
-            Essayer gratuitement →
+          <a href="#pricing" className="px-8 py-4 rounded-xl text-lg font-medium" style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }}>
+            Voir les tarifs
           </a>
           <a href="#pricing" className="px-8 py-4 rounded-xl text-lg font-medium" style={{ background: '#1E293B', color: 'white', border: '1px solid #334155' }}>
-            Voir les tarifs
+            Découvrir les offres
           </a>
         </div>
         <div className="flex gap-12 justify-center mt-16 flex-wrap">
@@ -248,8 +248,8 @@ export default function Home() {
           </div>
 
           <div className="text-center mt-10">
-            <a href="/signup" className="px-8 py-4 rounded-xl font-medium inline-block" style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }}>
-              Générer mes premiers posts gratuitement →
+            <a href="#pricing" className="px-8 py-4 rounded-xl font-medium inline-block" style={{ background: 'linear-gradient(135deg, #2563EB, #DB2777)', color: 'white' }}>
+              Choisir mon offre →
             </a>
           </div>
         </div>
@@ -264,7 +264,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { step: '1', title: 'Choisis ton thème', desc: 'Sélectionne ta catégorie et ton thème du jour dans notre catalogue', icon: '🎯' },
-              { step: '2', title: "L'IA crée ton contenu", desc: 'Claude génère un texte percutant, DALL-E crée une image professionnelle', icon: '✨' },
+              { step: '2', title: "L'IA crée ton contenu", desc: 'Claude génère un texte percutant et une image professionnelle', icon: '✨' },
               { step: '3', title: 'Publication automatique', desc: 'Ton post est publié sur tous tes réseaux à l\'heure que tu choisis', icon: '🚀' },
             ].map((item) => (
               <div key={item.step} className="text-center">
@@ -333,8 +333,18 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="text-center py-8 text-sm" style={{ color: '#334155', borderTop: '1px solid #1E293B' }}>
-        © 2026 <span style={{ color: '#2563EB' }}>Post</span><span style={{ color: '#EC4899' }}>IA</span> — Tous droits réservés
+      <footer className="py-10 px-6" style={{ borderTop: '1px solid #1E293B' }}>
+        <div className="max-w-6xl mx-auto flex flex-col items-center gap-4">
+          <div className="flex gap-6 flex-wrap justify-center text-sm">
+            <a href="/mentions-legales" style={{ color: '#94A3B8' }}>Mentions légales</a>
+            <a href="/cgv" style={{ color: '#94A3B8' }}>CGV</a>
+            <a href="/confidentialite" style={{ color: '#94A3B8' }}>Politique de confidentialité</a>
+            <a href="mailto:contact@postia.cloud" style={{ color: '#94A3B8' }}>Contact</a>
+          </div>
+          <div className="text-sm" style={{ color: '#334155' }}>
+            © 2026 <span style={{ color: '#2563EB' }}>Post</span><span style={{ color: '#EC4899' }}>IA</span> — Tous droits réservés
+          </div>
+        </div>
       </footer>
     </main>
   )
