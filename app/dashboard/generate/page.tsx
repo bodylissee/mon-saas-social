@@ -44,6 +44,7 @@ export default function GeneratePage() {
   const [result, setResult] = useState<{ texte: string; imageUrls: string[] } | null>(null)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [error, setError] = useState('')
+  const [progress, setProgress] = useState('')
   const [carrouselsAutorises, setCarrouselsAutorises] = useState(false)
   const [maxSlides, setMaxSlides] = useState(1)
   const router = useRouter()
@@ -77,8 +78,11 @@ export default function GeneratePage() {
     setResult(null)
     setCurrentSlide(0)
     setPublished(false)
+    setProgress('')
 
     try {
+      // Étape 1 : texte + points visuels (rapide). Le quota est vérifié ici.
+      setProgress('Rédaction du texte...')
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,15 +92,55 @@ export default function GeneratePage() {
           langue: 'français',
           categorie: selectedCategory,
           nbSlides,
+          etape: 'preparation',
         }),
       })
       const data = await res.json()
-      if (data.error) setError(data.error)
-      else setResult({ texte: data.texte, imageUrls: data.imageUrls || [data.imageUrl] })
-    } catch (e) {
-      setError('Une erreur est survenue')
+      if (data.error) {
+        setError(data.error)
+        setLoading(false)
+        setProgress('')
+        return
+      }
+
+      const slides: number = data.slides || 1
+      const pointsVisuels: string[] = data.pointsVisuels || []
+      const seed: number = data.seed || 0
+
+      // Étape 2 : une requête courte par image (évite le timeout de 60s
+      // de Vercel sur les carrousels, sans baisser la qualité des images).
+      let terminees = 0
+      setProgress(`Création des images... 0/${slides}`)
+
+      const imageUrls = await Promise.all(
+        Array.from({ length: slides }, async (_, i) => {
+          const imgRes = await fetch('/api/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              theme,
+              reseau,
+              categorie: selectedCategory,
+              slides,
+              index: i,
+              seed,
+              pointPrecis: slides > 1 ? pointsVisuels[i] : undefined,
+            }),
+          })
+          const imgData = await imgRes.json()
+          if (imgData.error) throw new Error(imgData.error)
+          terminees++
+          setProgress(`Création des images... ${terminees}/${slides}`)
+          return imgData.imageUrl as string
+        })
+      )
+
+      setResult({ texte: data.texte, imageUrls })
+    } catch (e: any) {
+      setError(e?.message || 'Une erreur est survenue')
     }
     setLoading(false)
+    setProgress('')
   }
 
   const handlePublish = async () => {
@@ -254,7 +298,7 @@ export default function GeneratePage() {
             className="w-full py-4 rounded-xl font-medium text-white text-lg"
             style={{ background: loading || !theme ? '#334155' : 'linear-gradient(135deg, #2563EB, #DB2777)' }}
           >
-            {loading ? '✨ Génération en cours...' : '✨ Générer mon post'}
+            {loading ? `✨ ${progress || 'Génération en cours...'}` : '✨ Générer mon post'}
           </button>
         </div>
 

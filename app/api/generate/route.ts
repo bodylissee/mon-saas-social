@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { limitesDuPlan } from '@/lib/limits'
 import { redimensionnerEtUpload } from '@/lib/zernio'
+import { construirePromptImage } from '@/lib/imagePrompt'
 
 // Autorise la fonction à tourner plus longtemps que les 10s par défaut :
 // un carrousel génère puis uploade plusieurs images vers Zernio.
@@ -14,54 +15,9 @@ export const maxDuration = 60
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// Style visuel adapté à chaque univers (extrait du début du label catégorie)
-function styleParCategorie(categorie: string | null): string {
-  if (!categorie) return 'photographie lifestyle moderne et soignée'
-  const c = categorie.toLowerCase()
-  if (c.includes('commerce')) return 'photographie produit premium façon publicité, mise en scène soignée, fond travaillé'
-  if (c.includes('fitness') || c.includes('sport')) return 'photographie sportive dynamique, énergie et mouvement, lumière contrastée'
-  if (c.includes('food') || c.includes('restauration')) return 'photographie culinaire alléchante en gros plan, style magazine gastronomique, texture appétissante'
-  if (c.includes('mode') || c.includes('beauté')) return 'photographie éditoriale mode façon magazine, esthétique premium et stylée'
-  if (c.includes('maison') || c.includes('déco')) return 'photographie d\'intérieur chaleureuse et inspirante, style magazine déco'
-  if (c.includes('business') || c.includes('entrepreneur')) return 'photographie corporate épurée et moderne, ambiance professionnelle inspirante'
-  if (c.includes('voyage') || c.includes('lifestyle')) return 'photographie de voyage immersive et lumineuse, grand angle évocateur'
-  if (c.includes('éducation') || c.includes('formation')) return 'photographie conceptuelle claire et moderne, ambiance studieuse et positive'
-  if (c.includes('tech') || c.includes('digital')) return 'photographie tech minimaliste et élégante, éclairage néon subtil, ambiance moderne'
-  if (c.includes('bien-être') || c.includes('santé')) return 'photographie sereine et apaisante, lumière douce et naturelle, ambiance zen'
-  if (c.includes('immobilier')) return 'photographie architecturale soignée, espaces lumineux et accueillants'
-  if (c.includes('artisanat') || c.includes('créateur')) return 'photographie artisanale authentique, gros plan sur les détails et la matière'
-  if (c.includes('animaux')) return 'photographie animalière attendrissante et vivante, regard expressif'
-  if (c.includes('famille') || c.includes('parentalité')) return 'photographie lifestyle familiale chaleureuse et authentique'
-  if (c.includes('auto') || c.includes('moto')) return 'photographie automobile dynamique et léchée, reflets et lignes marquées'
-  if (c.includes('événementiel')) return 'photographie d\'événement festive et vivante, ambiance lumineuse et émotion'
-  return 'photographie lifestyle moderne et soignée'
-}
-
-// Variations de cadrage/composition pour éviter la répétition et varier les slides
-const compositions = [
-  'gros plan serré sur le sujet principal, faible profondeur de champ, arrière-plan flou',
-  'plan large qui met le sujet dans son environnement, composition aérée',
-  'vue en plongée (au-dessus), composition graphique et équilibrée',
-  'angle dynamique en contre-plongée, sujet mis en valeur avec impact',
-  'composition décentrée façon règle des tiers, espace négatif élégant',
-  'mise en scène avec accessoires complémentaires autour du sujet',
-]
-
-const ambiancesLumiere = [
-  'lumière dorée chaleureuse de fin de journée',
-  'lumière naturelle vive et éclatante',
-  'éclairage studio doux et professionnel',
-  'contraste marqué entre ombres et lumières pour un rendu premium',
-  'lumière douce et diffuse, ambiance apaisante',
-]
-
-function pick<T>(arr: T[], seed: number): T {
-  return arr[seed % arr.length]
-}
-
 export async function POST(req: Request) {
   try {
-    const { theme, reseau, langue, categorie, nbSlides } = await req.json()
+    const { theme, reseau, langue, categorie, nbSlides, etape } = await req.json()
 
     let slides = parseInt(nbSlides) || 1
     if (slides < 1) slides = 1
@@ -212,33 +168,35 @@ Réponds UNIQUEMENT avec un JSON valide : un tableau de ${slides} chaînes de ca
       }
     }
 
-    // 2. Images — style adaptatif + variété + rendu scroll-stopper
-    const style = styleParCategorie(categorie)
     const seed = Math.floor(Math.random() * 1000)
 
-    // Génération + upload Zernio en parallèle pour chaque slide. On uploade
-    // tout de suite et on ne renvoie QUE des URLs (pas de base64) au client :
-    // sinon un carrousel de plusieurs images dépasse la limite de 4.5 Mo
-    // imposée par Vercel sur le corps des requêtes/réponses (erreur 413),
-    // notamment lors du re-envoi vers /api/publish.
+    // Étape "préparation" (flux découpé, utilisé par l'interface) : on renvoie
+    // le texte + les points visuels sans générer d'images. Le navigateur
+    // appellera ensuite /api/generate-image une fois par slide — chaque requête
+    // reste ainsi largement sous la limite de 60s de Vercel (fini les 504),
+    // sans toucher à la qualité des images.
+    if (etape === 'preparation') {
+      return NextResponse.json({
+        texte,
+        pointsVisuels,
+        slides,
+        seed,
+      })
+    }
+
+    // Flux complet (rétrocompatibilité, notamment pour le cron) : génération
+    // + upload Zernio en parallèle pour chaque slide. On ne renvoie QUE des
+    // URLs (pas de base64) pour rester sous la limite de 4.5 Mo de Vercel.
     const imageUrls: string[] = await Promise.all(
       Array.from({ length: slides }, async (_, i) => {
-        const composition = pick(compositions, seed + i)
-        const lumiere = pick(ambiancesLumiere, seed + i + 3)
-        const variation = slides > 1
-          ? ` Image ${i + 1} d'une série de ${slides} : varie nettement l'angle et le cadrage par rapport aux autres images.`
-          : ''
-
-        const pointPrecis = slides > 1 ? pointsVisuels[i] : undefined
-        const introSujet = pointPrecis
-          ? `illustrant précisément : "${pointPrecis}"`
-          : `sur le thème : "${theme}"`
-
-        const prompt = `${style}, ${introSujet}.${variation}
-Cadrage : ${composition}.
-Lumière : ${lumiere}.
-Rendu très haute qualité, image accrocheuse pensée pour arrêter le défilement sur les réseaux sociaux (scroll-stopper), couleurs riches et harmonieuses, netteté parfaite sur le sujet, rendu professionnel digne d'une grande marque.
-Aucun texte, aucun logo, aucun watermark dans l'image. Pas de style cartoon ni illustration.`
+        const prompt = construirePromptImage({
+          theme,
+          categorie,
+          slides,
+          index: i,
+          seed,
+          pointPrecis: slides > 1 ? pointsVisuels[i] : undefined,
+        })
 
         const imageResponse = await openai.images.generate({
           model: 'gpt-image-1',
