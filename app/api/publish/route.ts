@@ -4,6 +4,10 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { limitesDuPlan } from '@/lib/limits'
 
+// Autorise la fonction à tourner plus longtemps que les 10s par défaut :
+// un carrousel doit redimensionner + uploader plusieurs images vers Zernio.
+export const maxDuration = 60
+
 const dimensionsParPlateforme: { [key: string]: { width: number; height: number } } = {
   instagram: { width: 1080, height: 1080 },
   tiktok: { width: 1080, height: 1920 },
@@ -159,12 +163,15 @@ export async function POST(req: Request) {
     let mediaItems: any[] | undefined = undefined
 
     if (images.length > 0) {
-      mediaItems = []
-      for (const img of images) {
-        const resized = await resizeImageToBase64(img, dims.width, dims.height)
-        const publicUrl = await uploadImageToZernio(resized)
-        mediaItems.push({ type: 'image', url: publicUrl })
-      }
+      // Redimensionnement + upload en parallèle plutôt qu'un par un,
+      // pour rester sous la limite de temps d'exécution sur les carrousels.
+      mediaItems = await Promise.all(
+        images.map(async (img) => {
+          const resized = await resizeImageToBase64(img, dims.width, dims.height)
+          const publicUrl = await uploadImageToZernio(resized)
+          return { type: 'image', url: publicUrl }
+        })
+      )
     }
 
     const body: any = {

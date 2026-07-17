@@ -14,14 +14,15 @@ export async function GET(req: Request) {
     }
 
     const now = new Date()
-    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000)
 
+    // Le cron ne tourne qu'une fois par jour (limite du plan Vercel Hobby),
+    // donc on récupère TOUS les posts en attente dont l'heure est passée —
+    // pas seulement ceux des 5 dernières minutes — pour ne rien laisser de côté.
     const { data: posts, error } = await supabase
       .from('scheduled_posts')
       .select('*')
       .eq('status', 'pending')
       .lte('scheduled_at', now.toISOString())
-      .gte('scheduled_at', fiveMinutesAgo.toISOString())
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
