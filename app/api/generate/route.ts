@@ -5,6 +5,11 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { limitesDuPlan } from '@/lib/limits'
+import { redimensionnerEtUpload } from '@/lib/zernio'
+
+// Autorise la fonction à tourner plus longtemps que les 10s par défaut :
+// un carrousel génère puis uploade plusieurs images vers Zernio.
+export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -209,37 +214,43 @@ Réponds UNIQUEMENT avec un JSON valide : un tableau de ${slides} chaînes de ca
 
     // 2. Images — style adaptatif + variété + rendu scroll-stopper
     const style = styleParCategorie(categorie)
-    const imageUrls: string[] = []
     const seed = Math.floor(Math.random() * 1000)
 
-    for (let i = 0; i < slides; i++) {
-      const composition = pick(compositions, seed + i)
-      const lumiere = pick(ambiancesLumiere, seed + i + 3)
-      const variation = slides > 1
-        ? ` Image ${i + 1} d'une série de ${slides} : varie nettement l'angle et le cadrage par rapport aux autres images.`
-        : ''
+    // Génération + upload Zernio en parallèle pour chaque slide. On uploade
+    // tout de suite et on ne renvoie QUE des URLs (pas de base64) au client :
+    // sinon un carrousel de plusieurs images dépasse la limite de 4.5 Mo
+    // imposée par Vercel sur le corps des requêtes/réponses (erreur 413),
+    // notamment lors du re-envoi vers /api/publish.
+    const imageUrls: string[] = await Promise.all(
+      Array.from({ length: slides }, async (_, i) => {
+        const composition = pick(compositions, seed + i)
+        const lumiere = pick(ambiancesLumiere, seed + i + 3)
+        const variation = slides > 1
+          ? ` Image ${i + 1} d'une série de ${slides} : varie nettement l'angle et le cadrage par rapport aux autres images.`
+          : ''
 
-      const pointPrecis = slides > 1 ? pointsVisuels[i] : undefined
-      const introSujet = pointPrecis
-        ? `illustrant précisément : "${pointPrecis}"`
-        : `sur le thème : "${theme}"`
+        const pointPrecis = slides > 1 ? pointsVisuels[i] : undefined
+        const introSujet = pointPrecis
+          ? `illustrant précisément : "${pointPrecis}"`
+          : `sur le thème : "${theme}"`
 
-      const prompt = `${style}, ${introSujet}.${variation}
+        const prompt = `${style}, ${introSujet}.${variation}
 Cadrage : ${composition}.
 Lumière : ${lumiere}.
 Rendu très haute qualité, image accrocheuse pensée pour arrêter le défilement sur les réseaux sociaux (scroll-stopper), couleurs riches et harmonieuses, netteté parfaite sur le sujet, rendu professionnel digne d'une grande marque.
 Aucun texte, aucun logo, aucun watermark dans l'image. Pas de style cartoon ni illustration.`
 
-      const imageResponse = await openai.images.generate({
-        model: 'gpt-image-1',
-        prompt,
-        n: 1,
-        size: '1024x1024',
-      })
+        const imageResponse = await openai.images.generate({
+          model: 'gpt-image-1',
+          prompt,
+          n: 1,
+          size: '1024x1024',
+        })
 
-      const imageBase64 = imageResponse.data?.[0]?.b64_json
-      imageUrls.push(`data:image/png;base64,${imageBase64}`)
-    }
+        const imageBase64 = `data:image/png;base64,${imageResponse.data?.[0]?.b64_json}`
+        return redimensionnerEtUpload(imageBase64, reseau)
+      })
+    )
 
     return NextResponse.json({
       texte,

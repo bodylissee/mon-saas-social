@@ -3,65 +3,11 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { limitesDuPlan } from '@/lib/limits'
+import { redimensionnerEtUpload } from '@/lib/zernio'
 
 // Autorise la fonction à tourner plus longtemps que les 10s par défaut :
 // un carrousel doit redimensionner + uploader plusieurs images vers Zernio.
 export const maxDuration = 60
-
-const dimensionsParPlateforme: { [key: string]: { width: number; height: number } } = {
-  instagram: { width: 1080, height: 1080 },
-  tiktok: { width: 1080, height: 1920 },
-  facebook: { width: 1200, height: 630 },
-  linkedin: { width: 1200, height: 627 },
-  youtube: { width: 1280, height: 720 },
-  twitter: { width: 1200, height: 675 },
-}
-
-async function resizeImageToBase64(
-  base64: string,
-  width: number,
-  height: number
-): Promise<string> {
-  const base64Data = base64.replace(/^data:image\/\w+;base64,/, '')
-  const buffer = Buffer.from(base64Data, 'base64')
-
-  const sharp = (await import('sharp')).default
-  const resized = await sharp(buffer)
-    .resize(width, height, { fit: 'cover', position: 'center' })
-    .png()
-    .toBuffer()
-
-  return `data:image/png;base64,${resized.toString('base64')}`
-}
-
-// Upload une image base64 vers Zernio, renvoie l'URL publique
-async function uploadImageToZernio(imageBase64: string): Promise<string> {
-  const presignRes = await fetch('https://zernio.com/api/v1/media/presign', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.ZERNIO_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      filename: 'post-image.png',
-      contentType: 'image/png',
-    }),
-  })
-
-  const presignData = await presignRes.json()
-  const { uploadUrl, publicUrl } = presignData
-
-  const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
-  const buffer = Buffer.from(base64Data, 'base64')
-
-  await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'image/png' },
-    body: buffer,
-  })
-
-  return publicUrl
-}
 
 export async function POST(req: Request) {
   try {
@@ -159,16 +105,19 @@ export async function POST(req: Request) {
         ? [imageBase64]
         : []
 
-    const dims = dimensionsParPlateforme[platform] || { width: 1080, height: 1080 }
     let mediaItems: any[] | undefined = undefined
 
     if (images.length > 0) {
-      // Redimensionnement + upload en parallèle plutôt qu'un par un,
-      // pour rester sous la limite de temps d'exécution sur les carrousels.
+      // Cas normal : /api/generate a déjà redimensionné et uploadé les images,
+      // `images` contient donc des URLs Zernio directement utilisables.
+      // Cas legacy (ex: anciens appels avec du base64) : on redimensionne
+      // et on uploade ici, en parallèle pour rester sous la limite de temps.
       mediaItems = await Promise.all(
         images.map(async (img) => {
-          const resized = await resizeImageToBase64(img, dims.width, dims.height)
-          const publicUrl = await uploadImageToZernio(resized)
+          if (/^https?:\/\//.test(img)) {
+            return { type: 'image', url: img }
+          }
+          const publicUrl = await redimensionnerEtUpload(img, platform)
           return { type: 'image', url: publicUrl }
         })
       )
