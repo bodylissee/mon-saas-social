@@ -337,6 +337,10 @@ export default function Home() {
               </div>
             ))}
           </div>
+          <p className="text-center text-xs mt-8" style={{ color: '#475569' }}>
+            🔒 Paiement sécurisé par Stripe. Le débit apparaîtra sur votre relevé bancaire
+            sous le nom <strong style={{ color: '#64748B' }}>BOOSTMABOITE</strong>, la société qui édite PostIA.
+          </p>
         </div>
       </section>
 
@@ -350,7 +354,7 @@ export default function Home() {
             <a href="mailto:contact@postia.cloud" style={{ color: '#94A3B8' }}>Contact</a>
           </div>
           <div className="text-sm" style={{ color: '#334155' }}>
-            © 2026 <span style={{ color: '#2563EB' }}>Post</span><span style={{ color: '#EC4899' }}>IA</span> — Tous droits réservés
+            © 2026 <span style={{ color: '#2563EB' }}>Post</span><span style={{ color: '#EC4899' }}>IA</span> — un service BOOSTMABOITE — Tous droits réservés
           </div>
         </div>
       </footer>

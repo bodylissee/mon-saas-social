@@ -21,7 +21,7 @@ export default function CGVPage() {
             <p>
               Les présentes conditions générales de vente (CGV) régissent l'utilisation du
               service PostIA, plateforme de génération et de publication automatisée de contenus
-              sur les réseaux sociaux, éditée par B. Samia, micro-entreprise
+              sur les réseaux sociaux, éditée par B. Samia (nom commercial BOOSTMABOITE), micro-entreprise
               immatriculée sous le SIRET 332 612 720 00026. Toute souscription à un abonnement
               PostIA implique l'acceptation pleine et entière des présentes CGV.
             </p>
@@ -69,7 +69,9 @@ export default function CGVPage() {
             <h2 className="text-xl font-semibold text-white mb-2">Article 4 — Paiement</h2>
             <p>
               Le paiement des abonnements s'effectue en ligne par carte bancaire via notre
-              prestataire de paiement sécurisé Stripe. L'abonnement est reconduit
+              prestataire de paiement sécurisé Stripe. Le débit apparaît sur le relevé bancaire
+              sous la dénomination <strong>BOOSTMABOITE</strong>, nom commercial de l'éditeur.
+              L'abonnement est reconduit
               automatiquement chaque mois, par prélèvement sur le moyen de paiement enregistré,
               jusqu'à résiliation par l'utilisateur. Aucune donnée bancaire n'est stockée par
               PostIA.

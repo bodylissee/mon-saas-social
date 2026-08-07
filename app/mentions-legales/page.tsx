@@ -23,11 +23,16 @@ export default function MentionsLegalesPage() {
             </p>
             <ul className="mt-2 space-y-1">
               <li><strong>B. Samia</strong>, entrepreneur individuel (micro-entreprise)</li>
+              <li>Nom commercial : <strong>BOOSTMABOITE</strong></li>
               <li>Siège : 91600 Savigny-sur-Orge, France</li>
               <li>SIRET : 332 612 720 00026</li>
               <li>TVA : non applicable, article 293 B du CGI</li>
               <li>Email : contact@postia.cloud</li>
             </ul>
+            <p className="mt-3">
+              PostIA est un service édité sous la marque <strong>BOOSTMABOITE</strong>. Les
+              paiements et les relevés bancaires apparaissent sous cette dénomination.
+            </p>
           </div>
 
           <div>
