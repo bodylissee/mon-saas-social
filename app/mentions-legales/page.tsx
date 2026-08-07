@@ -1,3 +1,11 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Mentions légales',
+  description: 'Mentions légales du site PostIA (postia.cloud).',
+  alternates: { canonical: '/mentions-legales' },
+}
+
 export default function MentionsLegalesPage() {
   return (
     <main className="min-h-screen" style={{ background: '#0F172A' }}>
@@ -14,8 +22,8 @@ export default function MentionsLegalesPage() {
               Le site <strong>PostIA</strong> (accessible à l'adresse postia.cloud) est édité par :
             </p>
             <ul className="mt-2 space-y-1">
-              <li><strong>BELAHCEL SAMIA</strong>, entrepreneur individuel (micro-entreprise)</li>
-              <li>Adresse : 4 bis rue de l'Orme au Messier, 91600 Savigny-sur-Orge</li>
+              <li><strong>B. Samia</strong>, entrepreneur individuel (micro-entreprise)</li>
+              <li>Siège : 91600 Savigny-sur-Orge, France</li>
               <li>SIRET : 332 612 720 00026</li>
               <li>TVA : non applicable, article 293 B du CGI</li>
               <li>Email : contact@postia.cloud</li>
@@ -24,7 +32,7 @@ export default function MentionsLegalesPage() {
 
           <div>
             <h2 className="text-xl font-semibold text-white mb-2">Directeur de la publication</h2>
-            <p>BELAHCEL SAMIA</p>
+            <p>B. Samia</p>
           </div>
 
           <div>

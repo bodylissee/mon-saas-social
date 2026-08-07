@@ -1,3 +1,11 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Politique de confidentialité',
+  description: 'Comment PostIA collecte, utilise et protège vos données personnelles.',
+  alternates: { canonical: '/confidentialite' },
+}
+
 export default function ConfidentialitePage() {
   return (
     <main className="min-h-screen" style={{ background: '#0F172A' }}>
@@ -11,7 +19,7 @@ export default function ConfidentialitePage() {
           <div>
             <h2 className="text-xl font-semibold text-white mb-2">1. Responsable du traitement</h2>
             <p>
-              Le responsable du traitement des données est BELAHCEL SAMIA, micro-entreprise
+              Le responsable du traitement des données est B. Samia, micro-entreprise
               (SIRET 332 612 720 00026), éditeur du service PostIA. Pour toute question relative à
               vos données, vous pouvez nous contacter à : contact@postia.cloud.
             </p>

@@ -152,9 +152,6 @@ export default function Home() {
 
       {/* Hero */}
       <section className="text-center py-24 px-6">
-        <div className="inline-block text-xs font-medium px-3 py-1 rounded-full mb-6" style={{ background: '#1E293B', color: '#EC4899', border: '1px solid #EC489940' }}>
-          ✦ Propulsé par l'intelligence artificielle
-        </div>
         <h1 className="text-5xl font-bold mb-6 leading-tight" style={{ color: 'white' }}>
           Publie sur tous tes réseaux<br />
           <span style={{ color: '#2563EB' }}>automatiquement</span>
