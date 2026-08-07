@@ -50,6 +50,22 @@ export default function CGVPage() {
           </div>
 
           <div>
+            <h2 className="text-xl font-semibold text-white mb-2">Article 3 bis — Période d'essai gratuite</h2>
+            <p>
+              La formule Starter peut être souscrite avec une période d'essai
+              gratuite de 3 jours. L'enregistrement d'une carte bancaire valide est requis dès
+              la souscription, mais aucun montant n'est prélevé pendant la durée de l'essai.
+              À l'issue de ces 3 jours, et sauf résiliation par l'utilisateur avant ce terme,
+              l'abonnement se poursuit automatiquement et le premier prélèvement mensuel
+              intervient au tarif indiqué sur la page de tarification. La résiliation pendant
+              l'essai peut être effectuée à tout moment depuis l'espace client, sans frais ni
+              justification. La période d'essai est limitée à une seule par personne ; l'éditeur
+              se réserve le droit de refuser ou d'interrompre un essai en cas de souscriptions
+              multiples manifestement destinées à contourner cette limite.
+            </p>
+          </div>
+
+          <div>
             <h2 className="text-xl font-semibold text-white mb-2">Article 4 — Paiement</h2>
             <p>
               Le paiement des abonnements s'effectue en ligne par carte bancaire via notre

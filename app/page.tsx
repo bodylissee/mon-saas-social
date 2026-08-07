@@ -9,6 +9,7 @@ export default function Home() {
       name: "Starter", price: "9", desc: "Parfait pour débuter",
       reseaux: "1 réseau social", posts: "15 posts par mois",
       extras: ["Texte généré par IA", "Image générée par IA"],
+      essai: true,
       popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
     },
     {
@@ -284,7 +285,7 @@ export default function Home() {
             Des tarifs simples et transparents
           </h2>
           <p className="text-center mb-12" style={{ color: '#64748B' }}>
-            Commencez petit, grandissez à votre rythme. Changez de plan à tout moment.
+            Essayez gratuitement pendant 3 jours, sans engagement. Changez de plan à tout moment.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {plans.map((plan) => (
@@ -305,6 +306,11 @@ export default function Home() {
                 <div className="mb-6">
                   <span className="text-4xl font-bold" style={{ color: 'white' }}>{plan.price}€</span>
                   <span className="text-sm" style={{ color: '#64748B' }}>/mois</span>
+                  {plan.essai && (
+                    <div className="mt-2 inline-block text-xs font-medium px-2 py-1 rounded-full" style={{ background: '#2563EB20', color: '#60A5FA', border: '1px solid #2563EB40' }}>
+                      3 jours d'essai gratuit
+                    </div>
+                  )}
                 </div>
                 <div className="mb-6 space-y-2 flex-1">
                   {[plan.reseaux, plan.posts, ...plan.extras].map((feature) => (
@@ -321,8 +327,13 @@ export default function Home() {
                     : { background: '#0F172A', color: '#94A3B8', border: '1px solid #334155' }
                   }
                 >
-                  Choisir {plan.name}
+                  {plan.essai ? 'Essayer gratuitement' : `Choisir ${plan.name}`}
                 </button>
+                {plan.essai && (
+                  <p className="text-center text-xs mt-2" style={{ color: '#64748B' }}>
+                    Sans engagement — annulable à tout moment
+                  </p>
+                )}
               </div>
             ))}
           </div>

@@ -115,11 +115,19 @@ export async function POST(req: Request) {
       }
     }
 
-    // Changement de plan (upgrade/downgrade via le portail client)
+    // Changement de plan (upgrade/downgrade via le portail client), mais aussi
+    // fin d'essai gratuit. Si le paiement échoue à la fin des 3 jours, Stripe
+    // passe l'abonnement en past_due/unpaid : on doit alors couper l'accès,
+    // sinon un essai non payé continuerait de générer des images à nos frais.
     if (event.type === 'customer.subscription.updated') {
       const subscription = event.data.object as Stripe.Subscription
       const priceId = subscription.items.data[0]?.price.id
-      const plan = PLAN_PAR_PRICE[priceId] ?? 'free'
+
+      // 'trialing' = essai en cours (accès complet), 'active' = payé
+      const statutsAutorises = ['active', 'trialing']
+      const plan = statutsAutorises.includes(subscription.status)
+        ? PLAN_PAR_PRICE[priceId] ?? 'free'
+        : 'free'
 
       await supabase
         .from('profiles')
