@@ -20,6 +20,14 @@ const PLAN_PAR_PRICE: { [key: string]: string } = {
   [process.env.NEXT_PUBLIC_STRIPE_AGENCY_PRICE_ID!]: 'agency',
 }
 
+// Le compte Stripe est partagé avec d'autres projets (ex : ProAds). On doit
+// donc ignorer tout événement dont le tarif n'appartient pas à PostIA, sinon
+// un paiement fait sur un autre projet viendrait modifier — voire rétrograder
+// en 'free' — le profil PostIA d'un client qui utilise les deux services.
+function estUnPrixPostIA(priceId: string | undefined): boolean {
+  return !!priceId && priceId in PLAN_PAR_PRICE
+}
+
 const NOMS_PLANS: { [key: string]: string } = {
   starter: 'Starter',
   solo: 'Solo',
@@ -99,7 +107,13 @@ export async function POST(req: Request) {
           session.subscription as string
         )
         const priceId = subscription.items.data[0]?.price.id
-        const plan = PLAN_PAR_PRICE[priceId] ?? 'free'
+
+        // Paiement effectué sur un autre projet du même compte Stripe : on sort
+        if (!estUnPrixPostIA(priceId)) {
+          return NextResponse.json({ received: true, ignore: 'prix hors PostIA' })
+        }
+
+        const plan = PLAN_PAR_PRICE[priceId]
 
         await supabase
           .from('profiles')
@@ -123,10 +137,15 @@ export async function POST(req: Request) {
       const subscription = event.data.object as Stripe.Subscription
       const priceId = subscription.items.data[0]?.price.id
 
+      // Abonnement d'un autre projet du même compte Stripe : on sort
+      if (!estUnPrixPostIA(priceId)) {
+        return NextResponse.json({ received: true, ignore: 'prix hors PostIA' })
+      }
+
       // 'trialing' = essai en cours (accès complet), 'active' = payé
       const statutsAutorises = ['active', 'trialing']
       const plan = statutsAutorises.includes(subscription.status)
-        ? PLAN_PAR_PRICE[priceId] ?? 'free'
+        ? PLAN_PAR_PRICE[priceId]
         : 'free'
 
       await supabase
