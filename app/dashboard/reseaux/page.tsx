@@ -9,6 +9,7 @@ const PLATFORMS = [
   { id: "facebook", label: "Facebook" },
   { id: "linkedin", label: "LinkedIn" },
   { id: "twitter", label: "X (Twitter)" },
+  { id: "youtube", label: "YouTube" },
 ];
 
 type Account = {

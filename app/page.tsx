@@ -21,20 +21,14 @@ export default function Home() {
     {
       name: "Pro", price: "29", desc: "Le plus populaire",
       reseaux: "3 réseaux sociaux", posts: "150 posts par mois",
-      extras: ["Texte généré par IA", "Image générée par IA", "Statistiques"],
+      extras: ["Texte généré par IA", "Image générée par IA", "Carrousels jusqu'à 5 slides"],
       popular: true, priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
     },
     {
-      name: "Business", price: "59", desc: "Pour les PME et agences",
-      reseaux: "5 réseaux sociaux", posts: "400 posts par mois",
-      extras: ["Texte généré par IA", "Image générée par IA", "Statistiques", "Support prioritaire"],
+      name: "Business", price: "59", desc: "Pour les PME et les équipes",
+      reseaux: "Les 6 réseaux sociaux", posts: "400 posts par mois",
+      extras: ["Texte généré par IA", "Image générée par IA", "Carrousels jusqu'à 5 slides", "Support prioritaire"],
       popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID,
-    },
-    {
-      name: "Agency", price: "99", desc: "Multi-clients à grande échelle",
-      reseaux: "Les 6 réseaux sociaux", posts: "Posts illimités",
-      extras: ["Texte généré par IA", "Image générée par IA", "Statistiques", "Support prioritaire", "Tableau de bord agence"],
-      popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_AGENCY_PRICE_ID,
     },
   ]
 
@@ -287,7 +281,7 @@ export default function Home() {
           <p className="text-center mb-12" style={{ color: '#64748B' }}>
             Essayez gratuitement pendant 3 jours, sans engagement. Changez de plan à tout moment.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {plans.map((plan) => (
               <div
                 key={plan.name}
