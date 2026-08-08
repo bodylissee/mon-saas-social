@@ -32,7 +32,7 @@ export default function Home() {
     },
     {
       name: "Agency", price: "99", desc: "Multi-clients à grande échelle",
-      reseaux: "10 réseaux sociaux", posts: "Posts illimités",
+      reseaux: "Les 6 réseaux sociaux", posts: "Posts illimités",
       extras: ["Texte généré par IA", "Image générée par IA", "Statistiques", "Support prioritaire", "Tableau de bord agence"],
       popular: false, priceId: process.env.NEXT_PUBLIC_STRIPE_AGENCY_PRICE_ID,
     },
@@ -171,7 +171,7 @@ export default function Home() {
           </a>
         </div>
         <div className="flex gap-12 justify-center mt-16 flex-wrap">
-          {[["500+", "Clients actifs", "#2563EB"], ["15", "Réseaux sociaux", "#EC4899"], ["50k+", "Posts publiés", "#2563EB"]].map(([num, label, color]) => (
+          {[["5 min", "Pour tout configurer", "#2563EB"], ["24h/24", "Publication automatique", "#EC4899"], ["6", "Réseaux connectés", "#2563EB"]].map(([num, label, color]) => (
             <div key={label} className="text-center">
               <div className="text-3xl font-bold" style={{ color }}>{num}</div>
               <div className="text-sm mt-1" style={{ color: '#64748B' }}>{label}</div>
