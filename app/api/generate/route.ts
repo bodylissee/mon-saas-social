@@ -15,6 +15,28 @@ export const maxDuration = 60
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+// Filet de sécurité : aucun réseau social n'interprète le Markdown, les
+// caractères de formatage seraient affichés tels quels dans la publication.
+// Le prompt l'interdit déjà, mais un modèle peut toujours en glisser un.
+export function nettoyerMarkdown(texte: string): string {
+  return texte
+    // gras et italique : **texte**, __texte__, *texte*, _texte_
+    .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
+    .replace(/__([\s\S]+?)__/g, '$1')
+    .replace(/(?<![\w*])\*(?!\s)([^*\n]+?)(?<!\s)\*(?![\w*])/g, '$1')
+    // code inline `texte`
+    .replace(/`([^`\n]*)`/g, '$1')
+    // liens [texte](url) -> texte
+    .replace(/\[([^\]]+)\]\([^)\s]+\)/g, '$1')
+    // titres "# Titre" en début de ligne (sans toucher aux hashtags #MonTag)
+    .replace(/^#{1,6}[ \t]+/gm, '')
+    // lignes de séparation --- ___ ***
+    .replace(/^[ \t]*([-*_])\1{2,}[ \t]*$/gm, '')
+    // au plus une ligne vide d'affilée
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export async function POST(req: Request) {
   try {
     const { theme, reseau, langue, categorie, nbSlides, etape } = await req.json()
@@ -120,14 +142,24 @@ export async function POST(req: Request) {
         - Ajoute une question engageante à la fin pour provoquer des commentaires
         - Maximum 5 hashtags très ciblés (pas génériques)
         - Adapte le format au réseau : ${reseau === 'TikTok' ? 'court et punchy, max 150 mots' : reseau === 'LinkedIn' ? 'professionnel et storytelling, 200-300 mots' : 'engageant et visuel, 100-200 mots'}
-        
+
+        MISE EN FORME — RÈGLE ABSOLUE :
+        Les réseaux sociaux n'interprètent AUCUN formatage Markdown : les caractères
+        seraient affichés tels quels au client. N'utilise donc JAMAIS :
+        - d'astérisques pour le gras ou l'italique (**texte**, *texte*)
+        - de dièses pour les titres (# Titre)
+        - de tirets bas (_texte_), d'accents graves (\`code\`) ou de liens [texte](url)
+        - de lignes de séparation (---, ___, ***)
+        Pour mettre en valeur une idée, utilise uniquement des MAJUSCULES, des emojis
+        ou un retour à la ligne. Écris en texte brut, exactement tel qu'il sera publié.
+
         Réponds uniquement avec le texte du post, rien d'autre.`
       }]
     })
 
-    const texte = textResponse.content[0].type === 'text'
-      ? textResponse.content[0].text
-      : ''
+    const texte = nettoyerMarkdown(
+      textResponse.content[0].type === 'text' ? textResponse.content[0].text : ''
+    )
 
     // 1bis. Pour un carrousel, découper le contenu en points visuels distincts (1 par slide)
     let pointsVisuels: string[] = []
