@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -6,8 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Sans cette ligne, la fonction est coupée au bout de 10 s par défaut, alors
-// qu'elle doit attendre la génération du texte, de l'image et l'upload.
+// Durée maximale accordée au traitement en arrière-plan.
 export const maxDuration = 60
 
 // Lit une réponse d'API en restant lisible même quand ce n'est pas du JSON :
@@ -24,6 +23,71 @@ async function lireReponse(res: Response, source: string) {
   }
 }
 
+// Génère puis publie un post. Les erreurs sont enregistrées en base : c'est le
+// seul endroit où l'on pourra les lire, puisque la réponse HTTP est déjà partie.
+async function traiterPost(post: any) {
+  try {
+    const generateRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({
+        theme: post.theme,
+        reseau: post.reseau,
+        langue: 'français',
+      }),
+    })
+
+    const generated = await lireReponse(generateRes, '/api/generate')
+    if (generated.error) throw new Error(generated.error)
+
+    const publishRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/publish`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({
+        content: generated.texte,
+        platform: post.platform,
+        accountId: post.account_id,
+        imageBase64: generated.imageUrl,
+      }),
+    })
+
+    const publishData = await lireReponse(publishRes, '/api/publish')
+    if (publishData.error) throw new Error(publishData.error)
+
+    await supabase
+      .from('scheduled_posts')
+      .update({
+        status: 'published',
+        texte: generated.texte,
+        image_url: generated.imageUrl,
+        published_at: new Date().toISOString(),
+      })
+      .eq('id', post.id)
+  } catch (err: any) {
+    const message = String(err?.message ?? err).slice(0, 500)
+
+    // Si la colonne error_message n'existe pas encore, on retombe sur un
+    // simple changement de statut pour ne pas perdre l'information.
+    const { error: erreurMaj } = await supabase
+      .from('scheduled_posts')
+      .update({ status: 'failed', error_message: message })
+      .eq('id', post.id)
+
+    if (erreurMaj) {
+      await supabase
+        .from('scheduled_posts')
+        .update({ status: 'failed' })
+        .eq('id', post.id)
+    }
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('authorization')
@@ -33,9 +97,6 @@ export async function GET(req: Request) {
 
     const now = new Date()
 
-    // Le cron ne tourne qu'une fois par jour (limite du plan Vercel Hobby),
-    // donc on récupère TOUS les posts en attente dont l'heure est passée —
-    // pas seulement ceux des 5 dernières minutes — pour ne rien laisser de côté.
     const { data: posts, error } = await supabase
       .from('scheduled_posts')
       .select('*')
@@ -50,83 +111,27 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: 'Aucun post à publier', count: 0 })
     }
 
-    let published = 0
-    // On collecte les erreurs pour les renvoyer dans la réponse : elles sont
-    // ainsi visibles dans l'historique de cron-job.org, même si l'écriture en
-    // base échoue. Sans ça, un échec de publication est totalement muet.
-    const echecs: { id: string; theme: string; erreur: string }[] = []
+    // On marque immédiatement les posts comme "en cours" : le prochain passage
+    // du cron (15 min plus tard) ne doit pas les reprendre alors qu'ils sont
+    // encore en train d'être générés, sinon ils seraient publiés en double.
+    const ids = posts.map((p) => p.id)
+    await supabase
+      .from('scheduled_posts')
+      .update({ status: 'processing' })
+      .in('id', ids)
 
-    for (const post of posts) {
-      try {
-        const generateRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-          },
-          body: JSON.stringify({
-            theme: post.theme,
-            reseau: post.reseau,
-            langue: 'français',
-          }),
-        })
-
-        const generated = await lireReponse(generateRes, '/api/generate')
-        if (generated.error) throw new Error(generated.error)
-
-        const publishRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/publish`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-          },
-          body: JSON.stringify({
-            content: generated.texte,
-            platform: post.platform,
-            accountId: post.account_id,
-            imageBase64: generated.imageUrl,
-          }),
-        })
-
-        const publishData = await lireReponse(publishRes, '/api/publish')
-        if (publishData.error) throw new Error(publishData.error)
-
-        await supabase
-          .from('scheduled_posts')
-          .update({
-            status: 'published',
-            texte: generated.texte,
-            image_url: generated.imageUrl,
-            published_at: new Date().toISOString(),
-          })
-          .eq('id', post.id)
-
-        published++
-      } catch (err: any) {
-        const message = String(err?.message ?? err).slice(0, 500)
-        echecs.push({ id: post.id, theme: post.theme, erreur: message })
-
-        // On tente d'enregistrer la cause. Si la colonne error_message
-        // n'existe pas encore en base, on retombe sur un simple 'failed'
-        // pour ne pas perdre le changement de statut.
-        const { error: erreurMaj } = await supabase
-          .from('scheduled_posts')
-          .update({ status: 'failed', error_message: message })
-          .eq('id', post.id)
-
-        if (erreurMaj) {
-          await supabase
-            .from('scheduled_posts')
-            .update({ status: 'failed' })
-            .eq('id', post.id)
-        }
+    // Le vrai travail se fait APRÈS l'envoi de la réponse : générer un texte,
+    // une image puis publier prend bien plus que les 30 s au bout desquelles
+    // cron-job.org coupe la connexion et considère l'appel en échec.
+    after(async () => {
+      for (const post of posts) {
+        await traiterPost(post)
       }
-    }
+    })
 
     return NextResponse.json({
-      message: `${published} post(s) publiés`,
-      count: published,
-      echecs,
+      message: `${posts.length} post(s) pris en charge, traitement en cours`,
+      count: posts.length,
     })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })

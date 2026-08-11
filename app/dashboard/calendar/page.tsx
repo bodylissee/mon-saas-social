@@ -102,12 +102,14 @@ export default function CalendarPage() {
   const getStatusColor = (status: string) => {
     if (status === 'published') return '#059669'
     if (status === 'failed') return '#DC2626'
+    if (status === 'processing') return '#3B82F6'
     return '#F59E0B'
   }
 
   const getStatusLabel = (status: string) => {
     if (status === 'published') return '✅ Publié'
     if (status === 'failed') return '❌ Échoué'
+    if (status === 'processing') return '⚙️ Génération en cours'
     return '⏳ En attente'
   }
 
