@@ -43,6 +43,19 @@ export const ambiancesLumiere = [
   'lumière douce et diffuse, ambiance apaisante',
 ]
 
+// Sans consigne explicite, les modèles d'images produisent presque toujours
+// un homme jeune pour « artisan », « entrepreneur » ou « commerçant ». On force
+// donc la variation, sinon tous les posts d'un compte se ressemblent et une
+// cliente ne se reconnaît jamais dans les visuels de son propre métier.
+export const profilsPersonne = [
+  'une femme',
+  'un homme',
+  'une femme d\'une cinquantaine d\'années',
+  'un homme d\'une cinquantaine d\'années',
+  'une jeune femme',
+  'un jeune homme',
+]
+
 export function pick<T>(arr: T[], seed: number): T {
   return arr[seed % arr.length]
 }
@@ -63,8 +76,14 @@ export function construirePromptImage(params: {
   const style = styleParCategorie(categorie)
   const composition = pick(compositions, seed + index)
   const lumiere = pick(ambiancesLumiere, seed + index + 3)
+
+  // Le profil est tiré du seed, donc identique pour toutes les slides d'un même
+  // carrousel : la personne reste la même d'une image à l'autre, seule l'action
+  // change. Il varie en revanche d'un post à l'autre.
+  const profil = pick(profilsPersonne, seed)
+
   const variation = slides > 1
-    ? ` Image ${index + 1} d'une série de ${slides} : varie nettement l'angle et le cadrage par rapport aux autres images.`
+    ? ` Image ${index + 1} d'une série de ${slides} : varie nettement l'angle et le cadrage par rapport aux autres images, mais garde exactement la même personne que sur les autres slides.`
     : ''
 
   const introSujet = pointPrecis
@@ -72,6 +91,7 @@ export function construirePromptImage(params: {
     : `sur le thème : "${theme}"`
 
   return `${style}, ${introSujet}.${variation}
+Si une personne apparaît sur l'image, ce doit être ${profil}. Respecte cette consigne même si le métier ou le sujet évoque spontanément un autre profil.
 Cadrage : ${composition}.
 Lumière : ${lumiere}.
 Rendu très haute qualité, image accrocheuse pensée pour arrêter le défilement sur les réseaux sociaux (scroll-stopper), couleurs riches et harmonieuses, netteté parfaite sur le sujet, rendu professionnel digne d'une grande marque.
