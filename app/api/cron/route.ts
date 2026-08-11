@@ -1,4 +1,4 @@
-import { NextResponse, after } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -97,11 +97,26 @@ export async function GET(req: Request) {
 
     const now = new Date()
 
+    // Filet de sécurité : un post marqué "processing" depuis plus de 10 minutes
+    // vient d'une exécution interrompue (fonction coupée en plein travail). On
+    // le remet en attente, sinon il resterait bloqué là indéfiniment.
+    const ilYA10Min = new Date(now.getTime() - 10 * 60 * 1000).toISOString()
+    await supabase
+      .from('scheduled_posts')
+      .update({ status: 'pending' })
+      .eq('status', 'processing')
+      .lte('scheduled_at', ilYA10Min)
+
     const { data: posts, error } = await supabase
       .from('scheduled_posts')
       .select('*')
       .eq('status', 'pending')
       .lte('scheduled_at', now.toISOString())
+      // Un seul post par passage : la génération est lente, et le cron repasse
+      // toutes les 15 min de toute façon. Ça évite de dépasser le temps imparti
+      // en essayant d'en traiter plusieurs d'affilée.
+      .order('scheduled_at', { ascending: true })
+      .limit(1)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -120,17 +135,16 @@ export async function GET(req: Request) {
       .update({ status: 'processing' })
       .in('id', ids)
 
-    // Le vrai travail se fait APRÈS l'envoi de la réponse : générer un texte,
-    // une image puis publier prend bien plus que les 30 s au bout desquelles
-    // cron-job.org coupe la connexion et considère l'appel en échec.
-    after(async () => {
-      for (const post of posts) {
-        await traiterPost(post)
-      }
-    })
+    // Traitement direct. cron-job.org coupe la connexion au bout de 30 s et
+    // affichera "délai d'attente", mais la fonction Vercel continue jusqu'au
+    // bout : fermer la connexion côté client n'interrompt pas le serveur.
+    // Cet "échec" est donc cosmétique, seul le statut en base fait foi.
+    for (const post of posts) {
+      await traiterPost(post)
+    }
 
     return NextResponse.json({
-      message: `${posts.length} post(s) pris en charge, traitement en cours`,
+      message: `${posts.length} post(s) traités`,
       count: posts.length,
     })
   } catch (error: any) {
