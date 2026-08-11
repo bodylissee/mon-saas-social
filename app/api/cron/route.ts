@@ -6,6 +6,24 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Sans cette ligne, la fonction est coupée au bout de 10 s par défaut, alors
+// qu'elle doit attendre la génération du texte, de l'image et l'upload.
+export const maxDuration = 60
+
+// Lit une réponse d'API en restant lisible même quand ce n'est pas du JSON :
+// en cas de plantage ou de dépassement de délai, Vercel renvoie une page
+// d'erreur en texte brut, et JSON.parse échoue avec un message incompréhensible.
+async function lireReponse(res: Response, source: string) {
+  const brut = await res.text()
+  try {
+    return JSON.parse(brut)
+  } catch {
+    throw new Error(
+      `${source} a répondu ${res.status} en ${res.headers.get('content-type') ?? 'type inconnu'} : ${brut.slice(0, 200)}`
+    )
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('authorization')
@@ -53,7 +71,7 @@ export async function GET(req: Request) {
           }),
         })
 
-        const generated = await generateRes.json()
+        const generated = await lireReponse(generateRes, '/api/generate')
         if (generated.error) throw new Error(generated.error)
 
         const publishRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/publish`, {
@@ -70,7 +88,7 @@ export async function GET(req: Request) {
           }),
         })
 
-        const publishData = await publishRes.json()
+        const publishData = await lireReponse(publishRes, '/api/publish')
         if (publishData.error) throw new Error(publishData.error)
 
         await supabase
