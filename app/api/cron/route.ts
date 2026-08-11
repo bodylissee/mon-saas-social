@@ -33,6 +33,10 @@ export async function GET(req: Request) {
     }
 
     let published = 0
+    // On collecte les erreurs pour les renvoyer dans la réponse : elles sont
+    // ainsi visibles dans l'historique de cron-job.org, même si l'écriture en
+    // base échoue. Sans ça, un échec de publication est totalement muet.
+    const echecs: { id: string; theme: string; erreur: string }[] = []
 
     for (const post of posts) {
       try {
@@ -81,14 +85,31 @@ export async function GET(req: Request) {
 
         published++
       } catch (err: any) {
-        await supabase
+        const message = String(err?.message ?? err).slice(0, 500)
+        echecs.push({ id: post.id, theme: post.theme, erreur: message })
+
+        // On tente d'enregistrer la cause. Si la colonne error_message
+        // n'existe pas encore en base, on retombe sur un simple 'failed'
+        // pour ne pas perdre le changement de statut.
+        const { error: erreurMaj } = await supabase
           .from('scheduled_posts')
-          .update({ status: 'failed' })
+          .update({ status: 'failed', error_message: message })
           .eq('id', post.id)
+
+        if (erreurMaj) {
+          await supabase
+            .from('scheduled_posts')
+            .update({ status: 'failed' })
+            .eq('id', post.id)
+        }
       }
     }
 
-    return NextResponse.json({ message: `${published} post(s) publiés`, count: published })
+    return NextResponse.json({
+      message: `${published} post(s) publiés`,
+      count: published,
+      echecs,
+    })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

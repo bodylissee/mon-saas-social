@@ -32,6 +32,7 @@ type ScheduledPost = {
   reseau: string
   scheduled_at: string
   status: string
+  error_message?: string | null
 }
 
 export default function CalendarPage() {
@@ -282,6 +283,14 @@ export default function CalendarPage() {
                   <p className="text-xs" style={{ color: '#64748B' }}>
                     📅 {new Date(post.scheduled_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
+                  {post.status === 'failed' && post.error_message && (
+                    <p
+                      className="text-xs mt-2 p-2 rounded-lg break-words"
+                      style={{ background: '#450A0A', color: '#FCA5A5', border: '1px solid #7F1D1D' }}
+                    >
+                      ⚠️ {post.error_message}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
