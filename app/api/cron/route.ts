@@ -100,12 +100,17 @@ export async function GET(req: Request) {
     // Filet de sécurité : un post marqué "processing" depuis plus de 10 minutes
     // vient d'une exécution interrompue (fonction coupée en plein travail). On
     // le remet en attente, sinon il resterait bloqué là indéfiniment.
+    //
+    // La comparaison porte sur processing_at — le moment où le traitement a
+    // commencé — et NON sur scheduled_at. Comparer l'heure programmée revenait
+    // à déclarer "bloqué" tout post dont l'heure était passée depuis 10 min,
+    // donc à le republier au passage suivant : c'est ce qui a causé un doublon.
     const ilYA10Min = new Date(now.getTime() - 10 * 60 * 1000).toISOString()
     await supabase
       .from('scheduled_posts')
       .update({ status: 'pending' })
       .eq('status', 'processing')
-      .lte('scheduled_at', ilYA10Min)
+      .lt('processing_at', ilYA10Min)
 
     const { data: posts, error } = await supabase
       .from('scheduled_posts')
@@ -132,7 +137,7 @@ export async function GET(req: Request) {
     const ids = posts.map((p) => p.id)
     await supabase
       .from('scheduled_posts')
-      .update({ status: 'processing' })
+      .update({ status: 'processing', processing_at: now.toISOString() })
       .in('id', ids)
 
     // Traitement direct. cron-job.org coupe la connexion au bout de 30 s et
